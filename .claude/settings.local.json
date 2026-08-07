@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Set-Location \"C:\\\\Users\\\\akein\\\\Downloads\\\\F1 Energy Deployment Project\"; Get-ChildItem -Force -Name; \"--- .gitignore ---\"; if \\(Test-Path .gitignore\\) { Get-Content .gitignore } else { \"none\" }; \"--- cache size ---\"; \"{0:N1} MB\" -f \\(\\(Get-ChildItem -Recurse data\\\\cache -ErrorAction SilentlyContinue | Measure-Object Length -Sum\\).Sum / 1MB\\))"
+    ]
+  }
+}

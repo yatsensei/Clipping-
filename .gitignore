@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# FastF1 telemetry cache — ~1.2 GB after a full calendar build, and reproducible by
+# re-running scripts/. Never commit it.
+data/cache/
+
+# Processed artifacts are committed selectively; probe scratch output is not.
+data/processed/coverage_probe.csv

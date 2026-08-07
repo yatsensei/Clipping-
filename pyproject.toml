@@ -1,0 +1,18 @@
+[project]
+name = "clipping"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastf1>=3.8.3",
+    "matplotlib>=3.11.1",
+    "numpy>=2.4.6",
+    "pandas>=2.3.3",
+    "scipy>=1.17.1",
+]
+
+[dependency-groups]
+dev = [
+    "pypdf>=6.15.0",
+]
