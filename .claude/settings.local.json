@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Set-Location \"C:\\\\Users\\\\akein\\\\Downloads\\\\F1 Energy Deployment Project\"; Get-ChildItem -Force -Name; \"--- .gitignore ---\"; if \\(Test-Path .gitignore\\) { Get-Content .gitignore } else { \"none\" }; \"--- cache size ---\"; \"{0:N1} MB\" -f \\(\\(Get-ChildItem -Recurse data\\\\cache -ErrorAction SilentlyContinue | Measure-Object Length -Sum\\).Sum / 1MB\\))"
+      "PowerShell(Set-Location \"C:\\\\Users\\\\akein\\\\Downloads\\\\F1 Energy Deployment Project\"; Get-ChildItem -Force -Name; \"--- .gitignore ---\"; if \\(Test-Path .gitignore\\) { Get-Content .gitignore } else { \"none\" }; \"--- cache size ---\"; \"{0:N1} MB\" -f \\(\\(Get-ChildItem -Recurse data\\\\cache -ErrorAction SilentlyContinue | Measure-Object Length -Sum\\).Sum / 1MB\\))",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\akein\\\\Downloads\\\\F1 Energy Deployment Project\"; if \\(-not \\(Test-Path \"optimiser\\\\__init__.py\"\\)\\) { New-Item -ItemType File \"optimiser\\\\__init__.py\" | Out-Null }; $env:PYTHONPATH=\".\"; uv run python \"C:\\\\Users\\\\akein\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-akein-Downloads-F1-Energy-Deployment-Project\\\\fc1be9b1-59fb-4937-9b42-cf515513e1eb\\\\scratchpad\\\\try_dp.py\")"
     ]
   }
 }
