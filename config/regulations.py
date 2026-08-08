@@ -105,6 +105,16 @@ HARVEST_OVERRIDE_BONUS_J: Final[float] = 500_000.0
 HARVEST_CAP_QUALIFYING_J: Final[float] = 7_000_000.0
 HARVEST_CAP_QUALIFYING_FLOOR_J: Final[float] = 5_000_000.0
 
+# The cap the optimiser actually enforces. Single source of truth: the DP and every
+# baseline strategy read this, so the scenario can never drift between them.
+# Decision (2026-08-08): the qualifying figure, because this project solves a
+# single-car qualifying flying lap. Tagged SECONDARY — surface it as such in the UI.
+OPERATIVE_HARVEST_CAP_J: Final[float] = HARVEST_CAP_QUALIFYING_J
+OPERATIVE_HARVEST_CAP_BASIS: Final[str] = (
+    "7 MJ qualifying-session cap (2026). SECONDARY source — not confirmed against an "
+    "FIA document. The 8.5 MJ figure in Art. 5.4.10 is the race cap."
+)
+
 # Per-circuit qualifying caps have been reported but the figures are internally
 # inconsistent with the 7 MJ baseline and are not used until verified against the FIA
 # Appendix. Left deliberately empty rather than populated with unverified numbers.

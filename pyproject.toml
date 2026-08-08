@@ -1,7 +1,7 @@
 [project]
 name = "clipping"
 version = "0.1.0"
-description = "Add your description here"
+description = "Physics-informed optimiser for 2026 F1 electrical deployment strategy"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,7 +12,14 @@ dependencies = [
     "scipy>=1.17.1",
 ]
 
+[tool.pytest.ini_options]
+# Run from the repo root so `config`, `data` and `physics` import as top-level packages,
+# matching how the scripts are invoked (python -m scripts.*).
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [dependency-groups]
 dev = [
     "pypdf>=6.15.0",
+    "pytest>=9.1.1",
 ]
