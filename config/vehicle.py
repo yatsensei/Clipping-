@@ -77,18 +77,23 @@ class FittedVehicleParams:
     cd_a_high: float | None = None
     # Drag area [m^2] in the 2026 low-drag straight-line ("X-mode") active aero state.
     cd_a_low: float | None = None
-    # Rolling resistance coefficient [-]. Weakly identifiable at F1 speeds: at 80 m/s
-    # aero drag is ~50x the rolling term, so this is expected to have wide confidence
-    # intervals and to correlate strongly with cd_a. Reported with its CI, not point-only.
+    # Rolling resistance coefficient [-]. NOT identifiable from this telemetry: rolling
+    # resistance, engine braking and off-throttle MGU-K regen are all constant forces, so
+    # nothing in their speed dependence separates them and only their sum is measurable.
+    # Assigned a literature value and reported as an assumption, never as a fit result.
     crr: float | None = None
+    # The measured remainder of that constant force [N] — engine braking plus regen —
+    # applied only when off throttle, so it is not double counted under power.
+    f_offthrottle_n: float | None = None
     # Effective ICE crankshaft power [W], possibly speed/rpm dependent.
     p_ice_max: float | None = None
     # Driveline efficiency from crankshaft/ES to road [-].
     driveline_efficiency: float | None = None
-    # Peak lateral acceleration [m/s^2], setting corner speed via v_max = sqrt(a_lat/kappa).
-    a_lat_max: float | None = None
-    # Peak braking deceleration [m/s^2].
-    a_brake_max: float | None = None
+    # Downforce area Cl*A [m^2]. Grip rises with speed, so corner and braking limits are
+    # mu * (g + rho*Cl*A*v^2 / 2m) rather than constants.
+    cl_a: float | None = None
+    mu_lat: float | None = None
+    mu_brake: float | None = None
     # Fraction of braking energy recoverable at the CU-K bus [-].
     regen_efficiency: float | None = None
 
@@ -107,8 +112,9 @@ class FittedVehicleParams:
                 "crr",
                 "p_ice_max",
                 "driveline_efficiency",
-                "a_lat_max",
-                "a_brake_max",
+                "cl_a",
+                "mu_lat",
+                "mu_brake",
                 "regen_efficiency",
             )
             if getattr(self, name) is None

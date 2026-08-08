@@ -201,6 +201,24 @@ def clean_laps(session: fastf1.core.Session) -> pd.DataFrame:
     return laps[ok]
 
 
+def candidate_reference_laps(
+    session: fastf1.core.Session, limit: int = 8
+) -> list[pd.Series]:
+    """Clean laps ordered fastest first, as fallbacks for the reference lap.
+
+    The single fastest lap is not always usable: at Suzuka its telemetry has a gap that
+    left 1.5 km of the trace as a flat line. Callers walk this list until one lap has
+    continuous coverage.
+    """
+    laps = clean_laps(session)
+    if laps.empty:
+        laps = session.laps[session.laps["LapTime"].notna()]
+    if laps.empty:
+        return []
+    ordered = laps.sort_values("LapTime").head(limit)
+    return [row for _, row in ordered.iterrows()]
+
+
 def pick_reference_lap(session: fastf1.core.Session) -> pd.Series:
     """Fastest clean qualifying lap in the session.
 

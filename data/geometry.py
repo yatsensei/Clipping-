@@ -4,13 +4,21 @@ The sampling problem
 --------------------
 F1 position telemetry arrives at roughly 3.8 Hz. On a single lap that is ~20 m between
 samples at 300 km/h, which cannot resolve a corner of 10-50 m radius — Monaco's hairpin
-would vanish entirely. So the centreline is not built from one lap. Position samples from
-every clean lap in the session are pooled onto a common normalised lap position and
-reduced by median, which both densifies the sampling by an order of magnitude and
-rejects the occasional lap where a driver ran wide.
+would vanish entirely. So the centreline is not built from one lap: position samples from
+every clean lap in the session are pooled, which densifies the sampling by an order of
+magnitude and rejects the occasional lap where a driver ran wide.
 
-What comes out is therefore a representative racing line rather than a surveyed track
-centreline. That is the correct object here: the model simulates a car driving the line.
+The alignment problem
+---------------------
+Pooling requires knowing where along the lap each sample belongs. The obvious index,
+RelativeDistance, is derived from Distance, which FastF1 integrates from speed — and that
+integration drifts differently on every lap. At the Red Bull Ring laps disagreed by ~80 m,
+so adjacent 5 m bins alternated between two clusters and the traced path came out 64%
+too long. Samples are therefore aligned GEOMETRICALLY, by projection onto a seed path
+(see build_centreline), which removes the dependence on speed integration entirely.
+
+What comes out is a representative racing line rather than a surveyed track centreline.
+That is the correct object here: the model simulates a car driving the line.
 """
 
 from __future__ import annotations
@@ -24,7 +32,8 @@ from scipy.signal import find_peaks, savgol_filter
 from scipy.spatial import cKDTree
 
 # FastF1 position data is in units of 1/10 metre. Validated per circuit by comparing the
-# resulting path length against the Distance channel, which is integrated from speed.
+# resulting path length against known track lengths: traced lines come out ~1% short,
+# which is the expected sign, since a racing line cuts inside the official centreline.
 POS_UNITS_PER_M = 10.0
 
 DEFAULT_STEP_M = 5.0
@@ -184,6 +193,41 @@ def _lap_self_consistent(sub: pd.DataFrame) -> bool:
     return abs(gps - travelled) / travelled <= MAX_LAP_PATH_ERROR
 
 
+def trim_loop_overlap(
+    x: np.ndarray, y: np.ndarray, z: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    """Drop trailing points that have already driven past the start of the loop.
+
+    A lap's telemetry often runs a little beyond the timing line, so the last samples sit
+    *ahead* of the first one. Closing the loop then folds that overlap back on itself: the
+    resampled path retraces the same stretch in reverse, the smoothed tangent collapses to
+    near zero, and curvature explodes — at Shanghai this produced a 0.04 m radius on the
+    main straight.
+
+    Detected geometrically: if the closing vector (last -> first) points against the
+    direction of travel at the end of the path, the last point overshot.
+    """
+    xs, ys, zs = list(map(float, x)), list(map(float, y)), list(map(float, z))
+    removed = 0
+    max_trim = max(1, len(xs) // 10)
+    while len(xs) > 4 and removed < max_trim:
+        dex, dey = xs[-1] - xs[-2], ys[-1] - ys[-2]
+        cx, cy = xs[0] - xs[-1], ys[0] - ys[-1]
+        if dex * cx + dey * cy >= 0.0:
+            break
+        xs.pop(), ys.pop(), zs.pop()
+        removed += 1
+    return np.array(xs), np.array(ys), np.array(zs), removed
+
+
+def count_folds(x: np.ndarray, y: np.ndarray) -> int:
+    """Points where the path reverses on itself. A clean closed circuit has none."""
+    dx = np.diff(np.append(x, x[0]))
+    dy = np.diff(np.append(y, y[0]))
+    dot = dx * np.roll(dx, -1) + dy * np.roll(dy, -1)
+    return int((dot < 0).sum())
+
+
 def resample_closed_path(
     x: np.ndarray, y: np.ndarray, z: np.ndarray, step_m: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -231,7 +275,8 @@ def build_centreline(
     zvals = pooled["Z"].to_numpy() / POS_UNITS_PER_M
 
     sx, sy, sz = seed_xyz
-    diag: dict = {}
+    sx, sy, sz, trimmed = trim_loop_overlap(sx, sy, sz)
+    diag: dict = {"seed_points_trimmed": trimmed}
 
     for it in range(iterations):
         px, py, pz = resample_closed_path(sx, sy, sz, step_m)
@@ -256,18 +301,21 @@ def build_centreline(
         xyz = _fill_circular(xyz)
 
         sx, sy, sz = xyz[:, 0], xyz[:, 1], xyz[:, 2]
-        diag = {
-            "bins": n,
-            "empty_bins": empty,
-            "samples_projected": int(ok.sum()),
-            "samples_rejected_far": rejected,
-            "alignment_iterations": it + 1,
-        }
+        diag.update(
+            {
+                "bins": n,
+                "empty_bins": empty,
+                "samples_projected": int(ok.sum()),
+                "samples_rejected_far": rejected,
+                "alignment_iterations": it + 1,
+            }
+        )
 
     # Final pass onto an exactly uniform arc-length grid.
     x, y, z = resample_closed_path(sx, sy, sz, step_m)
     seg = np.hypot(np.diff(np.append(x, x[0])), np.diff(np.append(y, y[0])))
     distance = np.concatenate([[0.0], np.cumsum(seg)[:-1]])
+    diag["folds"] = count_folds(x, y)
     return distance, x, y, z, diag
 
 

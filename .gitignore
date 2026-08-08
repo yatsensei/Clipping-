@@ -15,3 +15,8 @@ data/cache/
 
 # Processed artifacts are committed selectively; probe scratch output is not.
 data/processed/coverage_probe.csv
+
+# Intermediate telemetry tables (~35 MB), rebuilt by `python -m data.dynamics` from the
+# FastF1 cache in ~2 minutes. The circuit geometry and the fit results they produce ARE
+# committed, so the repository stays runnable without them.
+data/processed/*.parquet

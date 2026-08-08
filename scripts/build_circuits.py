@@ -133,6 +133,11 @@ def build_one(ref: CircuitRef, step_m: float) -> CircuitGeometry:
         # channel is at fault. Flagged for review, not auto-rejected.
         "length_disagreement": bool(closure_err > 0.02),
         "clean_lap_filter_relaxed": relaxed,
+        # A physically impossible radius means the centreline folded back on itself.
+        # Real F1 minimum radius is ~10 m (Monaco's hairpin), so anything under 8 m is a
+        # geometry defect, not a corner.
+        "min_radius_m": round(float(np.min(radius)), 2),
+        "curvature_suspect": bool(np.min(radius) < 8.0),
         "n_official_corners": len(corners),
         "n_detected_corners": len(detected),
         "n_detected_straights": len(straights),
@@ -193,11 +198,17 @@ def main(argv: list[str] | None = None) -> int:
         path = OUT_DIR / f"{ref.circuit_id}.json"
         path.write_text(json.dumps(geo.to_json_dict()), encoding="utf-8")
         d = geo.diagnostics
+        warn = ""
+        if d["curvature_suspect"]:
+            warn += f"  !! Rmin {d['min_radius_m']:.1f} m"
+        if d.get("folds"):
+            warn += f"  !! {d['folds']} folds"
         print(
             f"{d['lap_distance_m']:>7.0f} m  corners {d['n_detected_corners']:>2}"
             f"/{d['n_official_corners']:<2} official  straights {d['n_detected_straights']:>2}"
             f"  longest {d['longest_straight_m']:>6.0f} m"
             f"  laps {d['laps_pooled']:>3}  path err {d['path_vs_distance_error_pct']:.2f}%"
+            f"{warn}"
         )
         index.append({**ref.to_dict(), **{k: d[k] for k in (
             "reference_driver", "reference_lap_time_s", "lap_distance_m",
