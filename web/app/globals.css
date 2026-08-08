@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/*
+  Visual tokens from the brief. Everything derives from these — no per-component
+  improvisation.
+
+  The brief gives #0A0A0B for the analysis background in one place and #08090A in the
+  token table. The token table wins, since it is the one that says "derive everything
+  from these".
+
+  Full-saturation red is reserved for ACTIVE DEPLOYMENT and headline figures. It is
+  deliberately absent from chrome, borders and hover states: if red means "the car is
+  deploying", it cannot also mean "this is a button".
+*/
+@theme {
+  --color-void: #08090a;
+  --color-panel: #141619;
+  --color-panel-high: #1c1f24;
+  --color-deploy: #ff2e17;
+  --color-deploy-dim: #7a1a0f;
+  --color-harvest: #3fe0d0;
+  --color-harvest-dim: #1a5d57;
+  --color-clip: #8a8f98;
+  --color-bone: #f2f0eb;
+  --color-muted: #6b7280;
+  --color-line: #262a30;
+
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-void);
+  color: var(--color-bone);
+  -webkit-font-smoothing: antialiased;
+  /* Telemetry readouts dominate, so monospace is the default rather than the exception. */
+  font-family: var(--font-mono);
+}
+
+/* Telemetry readouts must not jitter as digits change. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  font-stretch: expanded;
+}
+
+/* Thin scrollbars so panels read as instrument surfaces, not documents. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/*
+  Accessibility. Red on near-black is a hard palette for colour-blind users, so
+  deployment state is never encoded by hue alone — the track uses stroke WIDTH as well as
+  colour, the traces use fill direction (deploy above the axis, harvest below), and
+  clipping is marked with a hatch pattern rather than a colour swap.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-harvest);
+  outline-offset: 2px;
+}
