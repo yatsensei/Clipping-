@@ -1,37 +1,9 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { indexAtTime, lapTiming } from "./track";
+import { useReducedMotion } from "./useReducedMotion";
 import type { Strategy } from "./api";
-
-const MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-
-/**
- * Subscribes to the OS motion preference.
- *
- * useSyncExternalStore rather than an effect: matchMedia IS an external store, and
- * reading it in an effect means rendering once with the wrong answer and then again with
- * the right one. Nothing here autoplays, so honouring the preference means never
- * starting motion on its own — pressing Play is still an explicit request and is obeyed.
- */
-function useReducedMotion(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const query = window.matchMedia(MOTION_QUERY);
-      query.addEventListener("change", onChange);
-      return () => query.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(MOTION_QUERY).matches,
-    () => false, // server render: assume motion is allowed, corrected on hydration
-  );
-}
 
 /**
  * Drives the car marker in simulated lap time.
