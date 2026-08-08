@@ -6,10 +6,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastf1>=3.8.3",
+    "lightgbm>=4.7.0",
     "matplotlib>=3.11.1",
     "numpy>=2.4.6",
     "pandas>=2.3.3",
     "pyarrow>=25.0.0",
+    "scikit-learn>=1.9.0",
     "scipy>=1.17.1",
 ]
 

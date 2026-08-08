@@ -75,6 +75,11 @@ class DPResult:
         return self.soc_start_j - self.soc_end_j
 
 
+def _is_periodic(result: DPResult, soc_start_j: float) -> bool:
+    """Did the lap end with at least the energy it started with?"""
+    return bool(result.soc_end_j >= soc_start_j)
+
+
 def speed_ceiling(
     curvature: np.ndarray, gradient: np.ndarray, step_m: float, vehicle: VehicleModel
 ) -> np.ndarray:
@@ -172,8 +177,15 @@ def solve(
     n_soc: int = DEFAULT_N_SOC,
     n_speed: int = DEFAULT_N_SPEED,
     enforce_harvest_cap: bool = True,
+    harvest_price: float | None = None,
 ) -> DPResult:
-    """Solve for the lap-time-optimal deployment strategy."""
+    """Solve for the lap-time-optimal deployment strategy.
+
+    Pass `harvest_price` to skip the multiplier search and reuse a value already found
+    for this circuit. The multiplier is nearly independent of the starting charge, so
+    generating training data over a range of starting states costs one search rather
+    than one per state — the difference between minutes and hours.
+    """
     soc_start_j = capacity_j if soc_start_j is None else soc_start_j
 
     ceiling = speed_ceiling(curvature, gradient, step_m, vehicle)
@@ -184,54 +196,72 @@ def solve(
     curvature = np.roll(curvature, -shift)
     gradient = np.roll(gradient, -shift)
 
-    multiplier = 0.0
+    multiplier = 0.0 if harvest_price is None else float(harvest_price)
     notes: list[str] = []
     result = _solve_with_multiplier(
         ceiling, curvature, gradient, step_m, vehicle, soc_start_j, capacity_j,
-        controls, n_soc, n_speed, multiplier,
+        controls, n_soc, n_speed, multiplier, harvest_cap_j,
     )
 
     solves = 1
-    if enforce_harvest_cap and result.energy_harvested_j > harvest_cap_j:
-        # Price harvested energy until the lap respects the per-lap cap. The multiplier
-        # has units of seconds per joule, so it trades directly against lap time.
-        # Iteration counts are kept tight: each step is a full DP solve, and a loose
-        # bracket-plus-bisection can cost 50+ solves on a single circuit.
-        def harvested(price: float):
+    if harvest_price is not None:
+        # Caller supplied a price, so the search is skipped. Whether it actually worked
+        # is checked rather than assumed: a multiplier tuned at one starting charge does
+        # not always keep the lap periodic at another.
+        if not _is_periodic(result, soc_start_j):
+            notes.append(
+                f"Reused multiplier {multiplier:.3e} s/J left the lap "
+                f"{(soc_start_j - result.soc_end_j) / 1e3:.1f} kJ short of periodic."
+            )
+    elif enforce_harvest_cap and not _is_periodic(result, soc_start_j):
+        # The per-lap harvest cap is enforced as a HARD clamp during the rollout, so
+        # harvested energy can never exceed it. That means over-harvesting does not show
+        # up as an exceeded cap — it shows up as a lap that ends short, because the plan
+        # counted on recovery the clamp refused to deliver.
+        #
+        # So the multiplier is searched on PERIODICITY, not on harvest. Pricing harvest
+        # makes the DP plan for less of it; once the plan fits under the cap, plan and
+        # rollout agree again and the terminal constraint holds. Feasibility is monotone
+        # in the price, so the smallest feasible price is the least distorted solution.
+        #
+        # Iteration counts stay tight: each step is a full DP solve.
+        def attempt(price: float):
             nonlocal solves
             solves += 1
             return _solve_with_multiplier(
                 ceiling, curvature, gradient, step_m, vehicle, soc_start_j, capacity_j,
-                controls, n_soc, n_speed, price,
+                controls, n_soc, n_speed, price, harvest_cap_j,
             )
 
         lo, hi = 0.0, 2e-6
         bracketed = None
         for _ in range(BRACKET_STEPS):
-            trial = harvested(hi)
-            if trial.energy_harvested_j <= harvest_cap_j:
+            trial = attempt(hi)
+            if _is_periodic(trial, soc_start_j):
                 bracketed = trial
                 break
             lo, hi = hi, hi * 8.0
 
         if bracketed is None:
             notes.append(
-                f"Harvest cap {harvest_cap_j / 1e6:.2f} MJ could not be met even at "
-                f"multiplier {hi:.2e} s/J; reporting the unconstrained solution."
+                f"Could not make the lap periodic under the {harvest_cap_j / 1e6:.2f} MJ "
+                f"harvest cap even at multiplier {hi:.2e} s/J; reporting the best found. "
+                "Treat this circuit's result as not repeatable."
             )
+            result = trial
         else:
             result = bracketed
             for _ in range(BISECT_STEPS):
                 mid = 0.5 * (lo + hi)
-                trial = harvested(mid)
-                if trial.energy_harvested_j > harvest_cap_j:
-                    lo = mid
-                else:
+                trial = attempt(mid)
+                if _is_periodic(trial, soc_start_j):
                     hi, result = mid, trial
+                else:
+                    lo = mid
             multiplier = hi
             notes.append(
-                f"Harvest cap bound at {harvest_cap_j / 1e6:.2f} MJ; enforced with "
-                f"multiplier {multiplier:.3e} s/J after {solves} DP solves."
+                f"Harvest cap {harvest_cap_j / 1e6:.2f} MJ binds; periodicity restored "
+                f"with multiplier {multiplier:.3e} s/J after {solves} DP solves."
             )
 
     # Undo the rotation so outputs line up with the circuit's own distance grid.
@@ -259,6 +289,7 @@ def _solve_with_multiplier(
     n_soc: int,
     n_speed: int,
     harvest_price: float,
+    harvest_cap_j: float = OPERATIVE_HARVEST_CAP_J,
 ) -> DPResult:
     n = len(curvature)
     soc_grid = np.linspace(0.0, capacity_j, n_soc)
@@ -331,19 +362,45 @@ def _solve_with_multiplier(
 
     return _rollout(
         policy, controls, trans, v_grid, soc_grid, ceiling, curvature, gradient,
-        step_m, vehicle, soc_start_j, capacity_j, J,
+        step_m, vehicle, soc_start_j, capacity_j, J, harvest_cap_j,
     )
 
 
-def _rollout(
-    policy, controls, trans, v_grid, soc_grid, ceiling, curvature, gradient,
-    step_m, vehicle, soc_start_j, capacity_j, J,
+def rollout(
+    curvature: np.ndarray,
+    gradient: np.ndarray,
+    step_m: float,
+    vehicle: VehicleModel,
+    choose,
+    ceiling: np.ndarray | None = None,
+    soc_start_j: float | None = None,
+    capacity_j: float = ES_USABLE_WINDOW_J,
+    harvest_cap_j: float = OPERATIVE_HARVEST_CAP_J,
+    rotate: bool = False,
 ) -> DPResult:
-    """Replay the optimal policy forward, recomputing physics exactly at each state."""
-    n = len(curvature)
-    d_soc = soc_grid[1] - soc_grid[0]
-    d_v = v_grid[1] - v_grid[0]
+    """Run any deployment policy forward through the exact physics.
 
+    `choose(index, speed_mps, soc_j, ceiling_mps) -> control` in [-1, 1]. Both the DP's
+    own table and a learned model are evaluated through this same function, so a
+    comparison between them cannot be contaminated by differing simulation details.
+
+    Set rotate=True to start at the lap's slowest point, matching how the DP is solved.
+
+    `index` is always in the CIRCUIT'S OWN grid space, not the rotated stage order, so
+    callers can index geometry and precomputed features directly. Getting this wrong is
+    silent and severe: feeding a policy features from the wrong part of the track scored
+    -446% of the optimiser's gain when it was first tried.
+    """
+    soc_start_j = capacity_j if soc_start_j is None else soc_start_j
+    if ceiling is None:
+        ceiling = speed_ceiling(curvature, gradient, step_m, vehicle)
+    shift = int(np.argmin(ceiling)) if rotate else 0
+    if shift:
+        ceiling = np.roll(ceiling, -shift)
+        curvature = np.roll(curvature, -shift)
+        gradient = np.roll(gradient, -shift)
+
+    n = len(curvature)
     v = float(ceiling[0])
     soc = float(soc_start_j)
     total_t = 0.0
@@ -357,12 +414,8 @@ def _rollout(
     clip = np.zeros(n, dtype=bool)
 
     for i in range(n):
-        si = np.clip(soc / d_soc, 0, len(soc_grid) - 1)
-        vi = np.clip((v - v_grid[0]) / d_v, 0, len(v_grid) - 1)
-        ui = int(
-            policy[i][int(round(float(si))), int(round(float(vi)))]
-        )
-        u = controls[ui]
+        original_i = (i + shift) % n
+        u = float(np.clip(choose(original_i, v, soc, float(ceiling[i])), -1.0, 1.0))
 
         v_next, dt, e_out, e_in = _transition(
             np.array([v]), u, curvature[i], gradient[i], ceiling[(i + 1) % n],
@@ -374,7 +427,8 @@ def _rollout(
         draw = min(soc, e_out)
         if e_out - draw > 1.0:
             clip[i] = True
-            # Recompute the step with only the power that was actually available.
+            # Recompute the step with only the power that was actually available. Without
+            # this the car would be credited with acceleration it could not produce.
             available_frac = (draw / e_out) * max(u, 0.0) if e_out > 0 else 0.0
             v_next2, dt2, e_out2, e_in2 = _transition(
                 np.array([v]), available_frac, curvature[i], gradient[i],
@@ -384,8 +438,9 @@ def _rollout(
             e_out, e_in = float(e_out2[0]), float(e_in2[0])
             draw = min(soc, e_out)
 
-        gained = min(e_in, capacity_j - (soc - draw))
-        gained = max(gained, 0.0)
+        # Harvest is bounded by SoC headroom AND the per-lap regulatory cap.
+        headroom = capacity_j - (soc - draw)
+        gained = max(min(e_in, headroom, harvest_cap_j - harvested), 0.0)
         soc = min(max(soc - draw + gained, 0.0), capacity_j)
 
         deployed += draw
@@ -399,7 +454,7 @@ def _rollout(
         p_har[i] = gained / dt if dt > 0 else 0.0
         v = v_next
 
-    return DPResult(
+    result = DPResult(
         lap_time_s=total_t,
         deploy_fraction=frac,
         speed_mps=speeds,
@@ -412,6 +467,33 @@ def _rollout(
         soc_start_j=soc_start_j,
         soc_end_j=soc,
         harvest_multiplier=0.0,
-        feasible=bool(np.isfinite(J).any()),
+        feasible=True,
         notes=[],
     )
+    if shift:
+        for name in ("deploy_fraction", "speed_mps", "soc_j", "deploy_power_w",
+                     "harvest_power_w", "clipping"):
+            setattr(result, name, np.roll(getattr(result, name), shift))
+    return result
+
+
+def _rollout(
+    policy, controls, trans, v_grid, soc_grid, ceiling, curvature, gradient,
+    step_m, vehicle, soc_start_j, capacity_j, J, harvest_cap_j,
+) -> DPResult:
+    """Replay the DP table forward, recomputing physics exactly at each state."""
+    d_soc = float(soc_grid[1] - soc_grid[0])
+    d_v = float(v_grid[1] - v_grid[0])
+    n_s, n_v = len(soc_grid), len(v_grid)
+
+    def choose(i: int, v: float, soc: float, _ceiling: float) -> float:
+        si = int(round(float(np.clip(soc / d_soc, 0, n_s - 1))))
+        vi = int(round(float(np.clip((v - v_grid[0]) / d_v, 0, n_v - 1))))
+        return controls[int(policy[i][si, vi])]
+
+    res = rollout(
+        curvature, gradient, step_m, vehicle, choose, ceiling=ceiling,
+        soc_start_j=soc_start_j, capacity_j=capacity_j, harvest_cap_j=harvest_cap_j,
+    )
+    res.feasible = bool(np.isfinite(J).any())
+    return res

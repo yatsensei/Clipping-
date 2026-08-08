@@ -1,0 +1,43 @@
+{
+  "n_rows": 106920,
+  "n_circuits": 21,
+  "soc_levels_mj": [
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0
+  ],
+  "features": [
+    "curvature_abs",
+    "gradient",
+    "ceiling_mps",
+    "dist_to_next_apex_m",
+    "dist_from_last_apex_m",
+    "straight_length_m",
+    "dist_to_straight_end_m",
+    "next_apex_speed_mps",
+    "lap_fraction_remaining",
+    "ceiling_ahead_50m",
+    "ceiling_ahead_100m",
+    "ceiling_ahead_200m",
+    "ceiling_ahead_400m",
+    "ceiling_delta_50m",
+    "ceiling_delta_100m",
+    "ceiling_delta_200m",
+    "ceiling_delta_400m",
+    "speed_mps",
+    "soc_fraction",
+    "taper_headroom_kph",
+    "taper_fraction",
+    "speed_vs_ceiling",
+    "speed_vs_next_apex"
+  ],
+  "target": "target_fraction",
+  "dp_grid": {
+    "n_soc": 61,
+    "n_speed": 72
+  },
+  "harvest_cap_respected_pct": 100.0,
+  "soc_periodic_pct": 100.0
+}
