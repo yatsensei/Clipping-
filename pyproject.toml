@@ -5,7 +5,9 @@ description = "Physics-informed optimiser for 2026 F1 electrical deployment stra
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.141.1",
     "fastf1>=3.8.3",
+    "httpx>=0.28.1",
     "lightgbm>=4.7.0",
     "matplotlib>=3.11.1",
     "numpy>=2.4.6",
@@ -13,6 +15,7 @@ dependencies = [
     "pyarrow>=25.0.0",
     "scikit-learn>=1.9.0",
     "scipy>=1.17.1",
+    "uvicorn[standard]>=0.52.1",
 ]
 
 [tool.pytest.ini_options]
