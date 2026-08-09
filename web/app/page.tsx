@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Logo } from "@/components/Nav";
 import { LapScroller } from "@/components/landing/LapScroller";
-import { api, type Geometry, type Strategy } from "@/lib/api";
-
-export const dynamic = "force-dynamic";
+import { type Geometry, type Strategy } from "@/lib/api";
+import { serverApi } from "@/lib/server-data";
 
 // Monza. The taper problem is most visceral on a circuit that spends more than half its
 // distance above 290 km/h, and the greedy strategy empties the store there inside two
@@ -17,8 +16,8 @@ export default async function Landing() {
 
   try {
     [geometry, greedy] = await Promise.all([
-      api.geometry(LANDING_CIRCUIT),
-      api.strategy(LANDING_CIRCUIT, "greedy"),
+      serverApi.geometry(LANDING_CIRCUIT),
+      serverApi.strategy(LANDING_CIRCUIT, "greedy"),
     ]);
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
@@ -29,9 +28,13 @@ export default async function Landing() {
       <main className="flex min-h-screen items-center justify-center p-6">
         <div className="max-w-md rounded-lg border border-[#262A30] bg-[#141619] p-6">
           <h1 className="display text-lg">CLIPPING</h1>
-          <p className="mt-3 text-sm text-[#FF2E17]">The API is not reachable.</p>
+          <p className="mt-3 text-sm text-[#FF2E17]">No circuit data found.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-[#6B7280]">
+            The site reads a snapshot of the API from <code>web/public/api</code>.
+            Regenerate it from the repository root:
+          </p>
           <pre className="mt-2 overflow-x-auto rounded bg-[#08090A] p-3 text-[11px]">
-            uv run uvicorn api.main:app --reload
+            uv run python -m scripts.export_static
           </pre>
           {error && <p className="mt-3 text-[11px] text-[#6B7280]">{error}</p>}
         </div>

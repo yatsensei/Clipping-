@@ -344,13 +344,20 @@ Python 3.11 · FastF1 · NumPy / SciPy · LightGBM · FastAPI · Next.js 16 · T
 Requires Python 3.11+ and Node 20.9+.
 
 ```bash
-# Backend
-uv sync
-uv run python -m scripts.build_circuits    # downloads and caches telemetry on first run
-uv run uvicorn api.main:app --reload
-
-# Frontend, in a second terminal
+# Frontend only — it reads a committed snapshot of the API, so this is enough
 cd web && npm install && npm run dev
+```
+
+The site is static. Every API endpoint here is a pure reader, so the service is
+snapshotted to `web/public/api/` by `scripts/export_static.py` and the deployed build has
+no backend at all. To run against the live FastAPI instead — worth doing when changing the
+API itself — start it and point the frontend at it:
+
+```bash
+uv sync
+uv run uvicorn api.main:app --reload
+# then, in web/.env.local
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000
 ```
 
 Telemetry is cached to disk on first run — expect the initial build to take a while.
@@ -366,7 +373,18 @@ uv run python -m scripts.run_optimiser       # DP, all circuits (~25 min)
 uv run python -m scripts.build_training_data # DP training set  (~20 min)
 uv run python -m scripts.train_policy        # leave-one-circuit-out
 uv run python -m scripts.report_results      # refresh this README's tables
+uv run python -m scripts.export_static       # refresh the frontend's data snapshot
 ```
+
+## Deploying
+
+The frontend is a static Next.js build with the data baked in, so it deploys anywhere
+that serves files. On Vercel, import the repository and set **Root Directory to `web`** —
+that is the only setting a monorepo like this needs. No environment variables, no
+backend, nothing to keep warm.
+
+Re-run `scripts.export_static` and commit `web/public/api/` whenever the optimiser output
+changes; the build has no Python available to regenerate it.
 
 Tests:
 

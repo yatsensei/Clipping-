@@ -47,6 +47,23 @@ def test_circuit_list_carries_the_metadata_the_brief_asks_for():
         assert field in c, field
 
 
+def test_circuit_detail_returns_structured_provenance(circuit_id):
+    """This endpoint had no test and raised on every request.
+
+    CircuitDetail inherits a one-line `provenance` string from CircuitListItem and
+    overrides it with the structured object, so spreading the summary unchanged passed
+    the argument twice. Nothing caught it until the static export tried to snapshot it.
+    """
+    r = client.get(f"/circuits/{circuit_id}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert isinstance(body["provenance"], dict)
+    assert body["provenance"]["session"]
+    assert body["circuit_id"] == circuit_id
+    assert isinstance(body["segments"], list) and body["segments"]
+    assert isinstance(body["official_corners"], list)
+
+
 def test_unknown_circuit_is_a_404_not_a_crash():
     r = client.get("/circuits/nurburgring")
     assert r.status_code == 404

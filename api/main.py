@@ -97,8 +97,14 @@ def list_circuits() -> list[CircuitListItem]:
 def circuit_detail(circuit_id: str) -> CircuitDetail:
     summary = _get_circuit(circuit_id)
     geo = store.geometry(circuit_id)
+
+    # The list item carries `provenance` as a one-line string; the detail replaces it
+    # with the structured object. Spreading the summary unchanged passed both and the
+    # endpoint raised on every request.
+    fields = {k: v for k, v in vars(summary).items() if k != "provenance"}
+
     return CircuitDetail(
-        **vars(summary),
+        **fields,
         provenance=store.provenance_for(circuit_id),
         segments=geo["segments"],
         official_corners=geo["official_corners"],

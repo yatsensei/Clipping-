@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_BASE, type CircuitListItem, type Geometry } from "@/lib/api";
+import {
+  API_BASE,
+  paths,
+  type CircuitListItem,
+  type Geometry,
+} from "@/lib/api";
 import { TOKENS } from "@/lib/track";
 
 /**
@@ -16,7 +21,9 @@ const outlineCache = new Map<string, string>();
 async function fetchOutline(id: string): Promise<string> {
   const cached = outlineCache.get(id);
   if (cached) return cached;
-  const res = await fetch(`${API_BASE}/circuits/${id}/geometry`);
+  // Built through `paths`, not by hand: the static snapshot serves files, so the URL
+  // needs a .json suffix that a hand-written path silently omitted, 404ing every outline.
+  const res = await fetch(`${API_BASE}${paths.geometry(id)}`);
   if (!res.ok) throw new Error(`outline for ${id}`);
   const geo: Geometry = await res.json();
 

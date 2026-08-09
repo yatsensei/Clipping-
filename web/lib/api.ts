@@ -8,10 +8,47 @@
  * lap time presented without its energy debt, would be the interface lying.
  */
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+/**
+ * Two modes.
+ *
+ * STATIC (the default, and what ships): the API's payloads are snapshotted to
+ * web/public/api by scripts/export_static.py and served as files. Every endpoint in this
+ * project is a pure reader — nothing is computed on request — so the service is not
+ * needed in production, and the site deploys with no backend at all.
+ *
+ * LIVE: set NEXT_PUBLIC_API_BASE to run against the FastAPI service instead, which is
+ * useful while changing the API itself.
+ *
+ * Static files cannot serve query strings, so `?mode=optimal` becomes
+ * `/strategy/optimal.json`.
+ */
+const LIVE_BASE = process.env.NEXT_PUBLIC_API_BASE;
+export const STATIC_MODE = !LIVE_BASE;
+export const API_BASE = LIVE_BASE ?? "/api";
 
 export type StrategyMode = "optimal" | "uniform" | "greedy";
+
+/** The brief's "naive" is this codebase's "uniform"; snapshots use canonical names. */
+export function canonicalMode(mode: string): StrategyMode {
+  return (mode === "naive" ? "uniform" : mode) as StrategyMode;
+}
+
+export const paths = {
+  circuits: () => (STATIC_MODE ? "/circuits.json" : "/circuits"),
+  meta: () => (STATIC_MODE ? "/meta.json" : "/meta"),
+  detail: (id: string) =>
+    STATIC_MODE ? `/circuits/${id}.json` : `/circuits/${id}`,
+  geometry: (id: string) =>
+    STATIC_MODE ? `/circuits/${id}/geometry.json` : `/circuits/${id}/geometry`,
+  comparison: (id: string) =>
+    STATIC_MODE
+      ? `/circuits/${id}/comparison.json`
+      : `/circuits/${id}/comparison`,
+  strategy: (id: string, mode: string) =>
+    STATIC_MODE
+      ? `/circuits/${id}/strategy/${canonicalMode(mode)}.json`
+      : `/circuits/${id}/strategy?mode=${encodeURIComponent(mode)}`,
+};
 
 export interface Provenance {
   session: string;
@@ -175,12 +212,11 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  circuits: () => get<CircuitListItem[]>("/circuits"),
-  geometry: (id: string) => get<Geometry>(`/circuits/${id}/geometry`),
-  strategy: (id: string, mode: string) =>
-    get<Strategy>(`/circuits/${id}/strategy?mode=${encodeURIComponent(mode)}`),
-  comparison: (id: string) => get<Comparison>(`/circuits/${id}/comparison`),
-  meta: () => get<Meta>("/meta"),
+  circuits: () => get<CircuitListItem[]>(paths.circuits()),
+  geometry: (id: string) => get<Geometry>(paths.geometry(id)),
+  strategy: (id: string, mode: string) => get<Strategy>(paths.strategy(id, mode)),
+  comparison: (id: string) => get<Comparison>(paths.comparison(id)),
+  meta: () => get<Meta>(paths.meta()),
 };
 
 export const MODE_LABEL: Record<StrategyMode, string> = {

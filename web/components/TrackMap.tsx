@@ -47,10 +47,19 @@ export function TrackMap({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setBox({ w: width, h: height });
-    });
+
+    // Measure once immediately. Waiting for the observer's first callback leaves the
+    // telemetry card unrendered until something happens to resize the page, and a
+    // ResizeObserver does not necessarily fire on a tab that is not compositing.
+    const measure = () => {
+      const { width, height } = host.getBoundingClientRect();
+      setBox((prev) =>
+        prev.w === width && prev.h === height ? prev : { w: width, h: height },
+      );
+    };
+    measure();
+
+    const observer = new ResizeObserver(measure);
     observer.observe(host);
     return () => observer.disconnect();
   }, []);
