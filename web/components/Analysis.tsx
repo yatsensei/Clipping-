@@ -14,6 +14,7 @@ import {
 import { usePlayback } from "@/lib/usePlayback";
 import { CircuitSelector } from "./CircuitSelector";
 import { Headline } from "./Headline";
+import { Nav } from "./Nav";
 import { Legend, Provenance } from "./Provenance";
 import { TrackMap } from "./TrackMap";
 import { Traces } from "./Traces";
@@ -74,25 +75,19 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
 
   return (
     <div className="min-h-screen bg-[#08090A]">
-      <header className="border-b border-[#262A30] px-4 py-3 sm:px-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <h1 className="display text-lg text-[#F2F0EB]">CLIPPING</h1>
-            <p className="text-[11px] text-[#6B7280]">
-              Where a 2026 Formula 1 car should deploy its battery
-            </p>
-          </div>
-          {circuit && (
-            <div className="text-right">
-              <div className="text-sm text-[#F2F0EB]">{circuit.event_name}</div>
-              <div className="tabular text-[11px] text-[#6B7280]">
-                {(circuit.lap_distance_m / 1000).toFixed(3)} km ·{" "}
-                {circuit.corner_count} corners · round {circuit.round_number}
-              </div>
+      <Nav />
+      {circuit && (
+        <header className="border-b border-[#262A30] px-4 py-2.5 sm:px-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h1 className="text-sm text-[#F2F0EB]">{circuit.event_name}</h1>
+            <div className="tabular text-[11px] text-[#6B7280]">
+              {(circuit.lap_distance_m / 1000).toFixed(3)} km ·{" "}
+              {circuit.corner_count} corners · round {circuit.round_number} ·{" "}
+              {circuit.provenance}
             </div>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <main className="min-w-0 space-y-4">
@@ -136,11 +131,15 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
 
           {geometry && strategy && (
             <>
-              <div className="rounded-lg border border-[#262A30] bg-[#141619] p-2">
+              {/* Fixed height, not intrinsic. Sizing the map by width alone let a tall
+                  circuit run past the bottom of the viewport, so only half the lap was
+                  ever visible; the SVG now letterboxes inside a box that always fits. */}
+              <div className="h-[46vh] min-h-[280px] rounded-lg border border-[#262A30] bg-[#141619] p-2 sm:h-[52vh] lg:h-[calc(100vh-15rem)] lg:max-h-[640px]">
                 <TrackMap
                   geometry={geometry}
                   strategy={strategy}
                   carIndex={playback.index}
+                  socCapacityMj={capacity}
                 />
               </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Nav";
 import { LapScroller } from "@/components/landing/LapScroller";
 import { api, type Geometry, type Strategy } from "@/lib/api";
 
@@ -40,11 +41,13 @@ export default async function Landing() {
 
   return (
     <main>
-      <header className="fixed inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-4 mix-blend-difference">
-        <span className="display text-sm tracking-[0.22em]">CLIPPING</span>
+      {/* Not mix-blend-difference: the shader field runs underneath, and a blended
+          header inverts unpredictably as the background warms and cools. */}
+      <header className="fixed inset-x-0 top-0 z-20 flex items-center justify-between gap-4 px-5 py-3">
+        <Logo />
         <Link
           href="/analysis"
-          className="focus-ring text-[11px] uppercase tracking-[0.18em] text-[#F2F0EB] hover:opacity-70"
+          className="focus-ring rounded border border-[#262A30] bg-[#08090A]/70 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-[#F2F0EB] backdrop-blur-md transition-colors hover:border-[#FF2E17]"
         >
           Skip to the analysis →
         </Link>

@@ -400,7 +400,7 @@ tests/        Physics unit tests and optimiser constraint checks
 
 ## Author
 
-Built by [your name], Bachelor of Artificial Intelligence at the University of Technology
+Built by Akein Tsung, Bachelor of Artificial Intelligence at the University of Technology
 Sydney.
 
 The 2026 regulations turned energy deployment into a genuinely interesting constrained

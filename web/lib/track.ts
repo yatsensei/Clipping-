@@ -17,11 +17,22 @@ export interface Projection {
   height: number;
 }
 
-/** Fit the GPS outline into a viewBox, preserving aspect ratio. */
+/**
+ * Fit the GPS outline into a viewBox, preserving aspect ratio.
+ *
+ * The viewBox HUGS THE TRACK rather than being a fixed square. A square viewBox left a
+ * tall circuit like Monza pinned to the left edge with most of the box empty, and since
+ * the SVG letterboxes to fit its container, that empty space shrank the track to about
+ * half the height it could have used.
+ *
+ * `reserve` adds horizontal room on both sides for the telemetry card to sit beside the
+ * racing line instead of on top of it.
+ */
 export function project(
   geometry: Geometry,
-  width = 1000,
+  size = 1000,
   padding = 48,
+  reserve = 0,
 ): Projection {
   const xs = geometry.x_m;
   const ys = geometry.y_m;
@@ -32,12 +43,15 @@ export function project(
 
   const spanX = Math.max(maxX - minX, 1);
   const spanY = Math.max(maxY - minY, 1);
-  const inner = width - padding * 2;
-  const scale = inner / Math.max(spanX, spanY);
+  // One scale for both axes, so a circuit is never visually distorted.
+  const scale = size / Math.max(spanX, spanY);
+
+  const width = spanX * scale + padding * 2 + reserve * 2;
   const height = spanY * scale + padding * 2;
+  const offsetX = padding + reserve;
 
   const points = xs.map((x, i) => ({
-    x: padding + (x - minX) * scale,
+    x: offsetX + (x - minX) * scale,
     // SVG y grows downward; flip so the map matches a conventional track plan.
     y: height - padding - (ys[i] - minY) * scale,
   }));

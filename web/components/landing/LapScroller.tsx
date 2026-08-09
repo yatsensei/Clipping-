@@ -136,9 +136,13 @@ export function LapScroller({
           {/* Pinned track. */}
           <div className="lg:sticky lg:top-0 lg:h-screen lg:self-start">
             <div className="flex h-[52vh] flex-col justify-center lg:h-screen">
+              {/* flex-1 + min-h-0 so the outline is bounded by the pinned panel and
+                  letterboxes inside it. Sized by width alone, a tall circuit rendered
+                  taller than the viewport and pushed the readout off the bottom. */}
               <svg
                 viewBox={`0 0 ${projection.width} ${projection.height}`}
-                className="w-full"
+                preserveAspectRatio="xMidYMid meet"
+                className="min-h-0 w-full flex-1"
                 role="img"
                 aria-label="Monza, drawn as you scroll through the lap"
               >
