@@ -11,27 +11,27 @@ import type { Provenance as ProvenanceData } from "@/lib/api";
  */
 export function Provenance({ provenance }: { provenance: ProvenanceData }) {
   return (
-    <div className="rounded-lg border border-[#262A30] bg-[#141619] p-3 text-[11px] leading-relaxed">
+    <div className="rounded-lg border border-line bg-panel p-3 text-[11px] leading-relaxed">
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3FE0D0]" />
-        <span className="text-[10px] uppercase tracking-[0.18em] text-[#6B7280]">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-harvest" />
+        <span className="text-[10px] uppercase tracking-[0.18em] text-muted">
           Provenance
         </span>
       </div>
-      <p className="text-[#F2F0EB]">
+      <p className="text-ink">
         {provenance.session} · {provenance.reference_driver} ({provenance.reference_team}){" "}
-        <span className="tabular text-[#6B7280]">
+        <span className="tabular text-muted">
           {provenance.reference_lap_time_s.toFixed(3)}s
         </span>
       </p>
-      <p className="mt-1 text-[#6B7280]">
+      <p className="mt-1 text-muted">
         Geometry pooled from {provenance.laps_pooled} clean laps (
         {provenance.gps_samples.toLocaleString()} GPS samples).
       </p>
-      <p className="mt-2 text-[#8A8F98]">{provenance.note}</p>
+      <p className="mt-2 text-clip">{provenance.note}</p>
       {provenance.fallback_note && (
-        <p className="mt-2 rounded border border-[#262A30] bg-[#08090A] p-2 text-[#8A8F98]">
-          <span className="text-[#F2F0EB]">Fallback geometry. </span>
+        <p className="mt-2 rounded border border-line bg-surface p-2 text-clip">
+          <span className="text-ink">Fallback geometry. </span>
           {provenance.fallback_note}
         </p>
       )}
@@ -61,9 +61,9 @@ export function Legend() {
               strokeLinecap="round"
             />
           </svg>
-          <span className="text-[11px] text-[#F2F0EB]">
+          <span className="text-[11px] text-ink">
             {i.label}
-            {i.note && <span className="text-[#6B7280]"> — {i.note}</span>}
+            {i.note && <span className="text-muted"> — {i.note}</span>}
           </span>
         </div>
       ))}

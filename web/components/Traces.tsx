@@ -29,48 +29,117 @@ function pathFor(values: number[], min: number, max: number, height = HEIGHT): s
     .join(" ");
 }
 
+/** Round tick values covering [min, max], at roughly `target` intervals. */
+function ticks(min: number, max: number, target = 4): number[] {
+  const span = max - min;
+  if (span <= 0) return [min];
+  const raw = span / target;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  // Snap the interval to something a person would choose: 1, 2, 2.5, 5 or 10.
+  const step =
+    magnitude * ([1, 2, 2.5, 5, 10].find((m) => raw <= m * magnitude) ?? 10);
+
+  const out: number[] = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) {
+    out.push(+v.toFixed(6));
+  }
+  return out;
+}
+
+const GUTTER = 34; // room for the y-axis labels, in pixels
+
 function Panel({
   label,
   unit,
   value,
   children,
   cursorX,
+  axis,
 }: {
   label: string;
   unit: string;
   value: string;
   children: React.ReactNode;
   cursorX: number;
+  /** Domain the y axis spans, bottom to top, and how to print a tick. */
+  axis: { min: number; max: number; format?: (v: number) => string };
 }) {
+  const marks = ticks(axis.min, axis.max);
+  const format = axis.format ?? ((v: number) => String(v));
+  const span = axis.max - axis.min || 1;
+
   return (
-    <div className="border-t border-[#262A30] pt-2">
+    <div className="border-t border-line pt-2">
       <div className="flex items-baseline justify-between px-1 pb-1">
-        <span className="text-[10px] uppercase tracking-[0.18em] text-[#6B7280]">
+        <span className="text-[10px] uppercase tracking-[0.18em] text-muted">
           {label}
         </span>
-        <span className="tabular text-xs text-[#F2F0EB]">
+        <span className="tabular text-xs text-ink">
           {value}
-          <span className="text-[#6B7280] ml-1">{unit}</span>
+          <span className="text-muted ml-1">{unit}</span>
         </span>
       </div>
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        preserveAspectRatio="none"
-        className="w-full"
-        style={{ height: HEIGHT }}
-        aria-hidden="true"
-      >
-        {children}
-        <line
-          x1={cursorX}
-          y1={0}
-          x2={cursorX}
-          y2={HEIGHT}
-          stroke={TOKENS.bone}
-          strokeWidth={1}
-          opacity={0.7}
-        />
-      </svg>
+
+      <div className="relative" style={{ height: HEIGHT }}>
+        {/*
+          Labels are HTML, not SVG text. These charts stretch to the panel width with
+          preserveAspectRatio="none", which would squash any text inside the viewBox
+          horizontally by whatever factor the panel happens to be scaled by.
+        */}
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-10"
+          style={{ width: GUTTER }}
+          aria-hidden="true"
+        >
+          {marks.map((v) => {
+            const top = HEIGHT - ((v - axis.min) / span) * HEIGHT;
+            return (
+              <span
+                key={v}
+                className="tabular absolute right-1 -translate-y-1/2 text-[9px] leading-none text-muted"
+                style={{ top }}
+              >
+                {format(v)}
+              </span>
+            );
+          })}
+        </div>
+
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          preserveAspectRatio="none"
+          className="absolute inset-y-0 right-0"
+          style={{ left: GUTTER, width: `calc(100% - ${GUTTER}px)`, height: HEIGHT }}
+          aria-hidden="true"
+        >
+          {/* Gridlines at each labelled value. */}
+          {marks.map((v) => {
+            const y = HEIGHT - ((v - axis.min) / span) * HEIGHT;
+            return (
+              <line
+                key={v}
+                x1={0}
+                y1={y}
+                x2={WIDTH}
+                y2={y}
+                stroke={TOKENS.line}
+                strokeWidth={1}
+                opacity={0.65}
+              />
+            );
+          })}
+          {children}
+          <line
+            x1={cursorX}
+            y1={0}
+            x2={cursorX}
+            y2={HEIGHT}
+            stroke={TOKENS.bone}
+            strokeWidth={1}
+            opacity={0.7}
+          />
+        </svg>
+      </div>
     </div>
   );
 }
@@ -155,6 +224,7 @@ export function Traces({
         unit="km/h"
         value={strategy.speed_kph[i].toFixed(0)}
         cursorX={cursorX}
+        axis={{ min: 0, max: speed.max }}
       >
         <path d={speed.d} fill="none" stroke={TOKENS.bone} strokeWidth={1.4} />
         {clipSpans.map((s, k) => (
@@ -179,6 +249,8 @@ export function Traces({
             : strategy.deploy_kw[i].toFixed(0)
         }
         cursorX={cursorX}
+        // Deployment reads above the axis and harvest below, so the scale is signed.
+        axis={{ min: -power.peak, max: power.peak }}
       >
         <line
           x1={0}
@@ -197,6 +269,11 @@ export function Traces({
         unit="MJ"
         value={strategy.soc_mj[i].toFixed(2)}
         cursorX={cursorX}
+        axis={{
+          min: 0,
+          max: socCapacityMj,
+          format: (v) => v.toFixed(v % 1 === 0 ? 0 : 1),
+        }}
       >
         <line
           x1={0}

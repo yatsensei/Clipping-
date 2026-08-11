@@ -25,6 +25,8 @@ export interface Beat {
 }
 
 const TAPER_KPH = 290;
+/** Minimum share of the lap each beat must advance the car. ~260 m at Monza. */
+const MIN_SEPARATION = 0.045;
 
 /**
  * Scroll progress to lap position, piecewise-linear through the beats.
@@ -171,5 +173,41 @@ export function buildBeats(greedy: Strategy, lapDistanceM: number): Beat[] {
       last = beat.at;
     }
   }
-  return ordered;
+  return spaceOut(ordered);
+}
+
+/**
+ * Guarantee every beat moves the car a visible distance.
+ *
+ * The events genuinely cluster: at Monza the taper crossing, the store emptying and the
+ * onset of clipping happen within 15 m of each other, 1.2 km into the lap. Mapping scroll
+ * straight onto those positions gave three consecutive full-height sections that together
+ * advanced the car by 0.3% of the lap — which reads, correctly, as the animation being
+ * stuck.
+ *
+ * Each beat is therefore pushed to sit at least MIN_SEPARATION of a lap after the one
+ * before it. A beat still marks where its section BEGINS, so the car is at the stated
+ * distance as you arrive at the text and travels on while you read it. The kickers keep
+ * the true measured distance, because that is where the event actually happens.
+ */
+function spaceOut(beats: Beat[]): Beat[] {
+  const n = beats.length;
+  if (n < 2) return beats;
+
+  const at = beats.map((b) => b.at);
+
+  // Forward: push each beat clear of its predecessor.
+  for (let i = 1; i < n; i++) {
+    at[i] = Math.max(at[i], at[i - 1] + MIN_SEPARATION);
+  }
+
+  // The last beat releases into the app at the end of the lap; pin it and walk back so
+  // nothing gets shoved past it.
+  at[n - 1] = 1;
+  for (let i = n - 2; i >= 0; i--) {
+    at[i] = Math.min(at[i], at[i + 1] - MIN_SEPARATION);
+  }
+  at[0] = Math.max(0, at[0]);
+
+  return beats.map((beat, i) => ({ ...beat, at: at[i] }));
 }

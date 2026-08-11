@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { activeBeatForScroll, buildBeats, lapFractionForScroll } from "./beats";
 import type { Strategy } from "@/lib/api";
@@ -100,12 +102,70 @@ describe("buildBeats", () => {
     expect(beats[beats.length - 1].id).toBe("release");
   });
 
+  it("gives every beat enough lap to make the car visibly move", () => {
+    // The regression this guards: at Monza the taper crossing, the store emptying and
+    // the onset of clipping fall within 15 m, so three consecutive sections advanced the
+    // car by 0.3% of the lap between them and the animation appeared to freeze.
+    const beats = buildBeats(greedyLap(), 5762);
+    for (let i = 1; i < beats.length; i++) {
+      expect(beats[i].at - beats[i - 1].at).toBeGreaterThan(0.03);
+    }
+    expect(beats[beats.length - 1].at).toBeCloseTo(1, 6);
+    expect(beats[0].at).toBeGreaterThanOrEqual(0);
+  });
+
+  it("still ends the story at the end of the lap", () => {
+    const beats = buildBeats(greedyLap(), 5762);
+    expect(beats[beats.length - 1].at).toBe(1);
+    expect(beats.every((b) => b.at >= 0 && b.at <= 1)).toBe(true);
+  });
+
   it("reads its figures from the data rather than hardcoding them", () => {
     const lap = greedyLap();
     const beats = buildBeats(lap, 5762);
     const clip = beats.find((b) => b.id === "clip");
     const expected = (100 * lap.clipping.filter(Boolean).length) / lap.clipping.length;
     expect(clip!.readout!.value).toBe(`${expected.toFixed(0)}%`);
+  });
+});
+
+describe("the real Monza lap the landing page actually ships", () => {
+  // The stuck-scroll bug was specific to this data: three events inside 15 m. A synthetic
+  // fixture cannot reproduce it, so this reads the snapshot the site is deployed with.
+  const snapshot = path.join(
+    __dirname,
+    "..",
+    "..",
+    "public",
+    "api",
+    "circuits",
+    "monza",
+    "strategy",
+    "greedy.json",
+  );
+
+  it("advances the car through every section", () => {
+    const greedy = JSON.parse(readFileSync(snapshot, "utf8")) as Strategy;
+    const beats = buildBeats(greedy, 5762);
+
+    const gaps = beats
+      .slice(1)
+      .map((b, i) => +(b.at - beats[i].at).toFixed(4));
+
+    // Before the fix these were [0.163, 0.046, 0.002, 0.001, 0.788] — two sections that
+    // moved the car essentially not at all.
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThan(0.03);
+    }
+    expect(beats[beats.length - 1].at).toBe(1);
+  });
+
+  it("keeps the beats in narrative order", () => {
+    const greedy = JSON.parse(readFileSync(snapshot, "utf8")) as Strategy;
+    const ids = buildBeats(greedy, 5762).map((b) => b.id);
+    expect(ids[0]).toBe("open");
+    expect(ids[ids.length - 1]).toBe("release");
+    expect(ids.indexOf("deploy")).toBeLessThan(ids.indexOf("empty"));
   });
 });
 

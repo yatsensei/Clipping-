@@ -127,16 +127,25 @@ export function interpolatePoint(
   };
 }
 
+/**
+ * SVG colours as CSS variable references rather than literals.
+ *
+ * Browsers resolve var() and color-mix() inside SVG presentation attributes, so the
+ * markup carries no actual colour and switches theme purely in CSS. That matters for
+ * more than tidiness: literals baked in during server rendering would disagree with the
+ * client's theme after hydration, and every one of them would be a mismatch.
+ */
 export const TOKENS = {
-  void: "#08090A",
-  panel: "#141619",
-  panelHigh: "#1C1F24",
-  deploy: "#FF2E17",
-  harvest: "#3FE0D0",
-  clip: "#8A8F98",
-  bone: "#F2F0EB",
-  line: "#262A30",
-  muted: "#6B7280",
+  void: "var(--surface)",
+  panel: "var(--panel)",
+  panelHigh: "var(--panel-high)",
+  deploy: "var(--deploy)",
+  harvest: "var(--harvest)",
+  clip: "var(--clip)",
+  bone: "var(--ink)",
+  line: "var(--line)",
+  muted: "var(--muted)",
+  warn: "var(--warn)",
 } as const;
 
 /**
@@ -156,12 +165,12 @@ export function colourFor(
   if (clipping) return TOKENS.clip;
   if (harvestKw > 1) return TOKENS.harvest;
   if (deployKw > 1) {
+    // Dim ember through to full-saturation red as deployment intensity rises. Mixing
+    // toward the page surface rather than a fixed dark keeps the ramp correct in both
+    // themes: on light it fades to white, on dark to near-black.
     const t = Math.min(deployKw / maxDeployKw, 1);
-    // Dim ember through to full-saturation red as deployment intensity rises.
-    const r = Math.round(122 + (255 - 122) * t);
-    const g = Math.round(26 + (46 - 26) * t);
-    const b = Math.round(15 + (23 - 15) * t);
-    return `rgb(${r},${g},${b})`;
+    const strength = Math.round(34 + 66 * t);
+    return `color-mix(in srgb, var(--deploy) ${strength}%, var(--surface))`;
   }
   return TOKENS.line;
 }

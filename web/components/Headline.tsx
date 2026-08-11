@@ -25,16 +25,16 @@ export function Headline({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-[#262A30] bg-[#141619] p-4">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-[#6B7280]">
+      <div className="rounded-lg border border-line bg-panel p-4">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
           Lap time gained
         </div>
-        <div className="display mt-1 text-4xl text-[#FF2E17] tabular leading-none">
+        <div className="display mt-1 text-4xl text-deploy tabular leading-none">
           {comparison.gain_vs_uniform_s.toFixed(3)}
-          <span className="text-xl text-[#6B7280] ml-1">s</span>
+          <span className="text-xl text-muted ml-1">s</span>
         </div>
-        <p className="mt-2 text-[11px] leading-snug text-[#6B7280]">
-          versus <span className="text-[#F2F0EB]">uniform constant deployment</span>.{" "}
+        <p className="mt-2 text-[11px] leading-snug text-muted">
+          versus <span className="text-ink">uniform constant deployment</span>.{" "}
           {comparison.baseline_statement}
         </p>
       </div>
@@ -59,13 +59,13 @@ export function Headline({
         />
       </dl>
 
-      <div className="rounded-lg border border-[#262A30] bg-[#141619] p-3">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2">
+      <div className="rounded-lg border border-line bg-panel p-3">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-muted mb-2">
           All strategies
         </div>
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-[#6B7280] text-[10px] uppercase tracking-wider">
+            <tr className="text-muted text-[10px] uppercase tracking-wider">
               <th className="text-left font-normal pb-1">Mode</th>
               <th className="text-right font-normal pb-1">Lap</th>
               <th className="text-right font-normal pb-1">Clip</th>
@@ -74,17 +74,17 @@ export function Headline({
           </thead>
           <tbody className="tabular">
             {comparison.strategies.map((s) => (
-              <tr key={s.mode} className="border-t border-[#262A30]">
-                <td className="py-1.5 capitalize text-[#F2F0EB]">{s.mode}</td>
+              <tr key={s.mode} className="border-t border-line">
+                <td className="py-1.5 capitalize text-ink">{s.mode}</td>
                 <td className="py-1.5 text-right">{s.lap_time_s.toFixed(3)}</td>
-                <td className="py-1.5 text-right text-[#6B7280]">
+                <td className="py-1.5 text-right text-muted">
                   {s.clipping_pct.toFixed(0)}%
                 </td>
                 <td className="py-1.5 text-right">
                   {s.repeatable ? (
-                    <span className="text-[#3FE0D0]">yes</span>
+                    <span className="text-harvest">yes</span>
                   ) : (
-                    <span className="text-[#8A8F98]">
+                    <span className="text-clip">
                       no · −{comparison.greedy_energy_debt_mj.toFixed(2)} MJ
                     </span>
                   )}
@@ -93,22 +93,22 @@ export function Headline({
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-[11px] leading-snug text-[#6B7280]">
+        <p className="mt-2 text-[11px] leading-snug text-muted">
           {comparison.greedy_caveat}
         </p>
       </div>
 
       {comparison.learned_policy && (
-        <div className="rounded-lg border border-[#262A30] bg-[#141619] p-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-[#6B7280]">
+        <div className="rounded-lg border border-line bg-panel p-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
             Learned policy (held out)
           </div>
-          <div className="tabular mt-1 text-lg text-[#F2F0EB]">
+          <div className="tabular mt-1 text-lg text-ink">
             {comparison.learned_policy.gain_retained_pct.toFixed(0)}%
-            <span className="text-xs text-[#6B7280] ml-2">of the gain retained</span>
+            <span className="text-xs text-muted ml-2">of the gain retained</span>
           </div>
           {!comparison.learned_policy.comparable && (
-            <p className="mt-1 text-[11px] leading-snug text-[#8A8F98]">
+            <p className="mt-1 text-[11px] leading-snug text-clip">
               Not comparable: this lap ended with less energy than it started, so its
               time flatters the model. The optimiser is periodic by construction; the
               cloned policy has no mechanism that enforces it.
@@ -132,17 +132,17 @@ function Stat({
   tone?: "normal" | "clip";
 }) {
   return (
-    <div className="rounded-lg border border-[#262A30] bg-[#141619] p-3">
-      <dt className="text-[10px] uppercase tracking-[0.16em] text-[#6B7280]">
+    <div className="rounded-lg border border-line bg-panel p-3">
+      <dt className="text-[10px] uppercase tracking-[0.16em] text-muted">
         {label}
       </dt>
       <dd
         className={`tabular mt-1 text-xl ${
-          tone === "clip" ? "text-[#8A8F98]" : "text-[#F2F0EB]"
+          tone === "clip" ? "text-clip" : "text-ink"
         }`}
       >
         {value}
-        <span className="text-xs text-[#6B7280] ml-1">{unit}</span>
+        <span className="text-xs text-muted ml-1">{unit}</span>
       </dd>
     </div>
   );

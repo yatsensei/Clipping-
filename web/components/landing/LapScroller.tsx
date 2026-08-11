@@ -6,6 +6,7 @@ import type { Geometry, Strategy } from "@/lib/api";
 import { TOKENS, project } from "@/lib/track";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { activeBeatForScroll, buildBeats, lapFractionForScroll } from "./beats";
+import { CarSilhouette } from "./CarSilhouette";
 import { ShaderBackground, type FieldState } from "./ShaderBackground";
 
 /**
@@ -40,6 +41,8 @@ export function LapScroller({
   const carRef = useRef<SVGGElement>(null);
   const readoutRef = useRef<HTMLDivElement>(null);
   const field = useRef<FieldState>({ soc: 1, deploy: 0, clip: 0 });
+  // Shared with the background car, which drifts across the viewport as the lap runs.
+  const lapProgress = useRef(0);
 
   const [activeBeat, setActiveBeat] = useState(0);
   const reduced = useReducedMotion();
@@ -55,6 +58,7 @@ export function LapScroller({
       path.style.strokeDasharray = "none";
       path.style.strokeDashoffset = "0";
       field.current = { soc: 0.35, deploy: 0.2, clip: 0.4 };
+      lapProgress.current = 0.5;
       return;
     }
 
@@ -76,6 +80,7 @@ export function LapScroller({
         scrollable > 0 ? Math.min(Math.max(-rect.top / scrollable, 0), 1) : 0;
 
       const lap = lapFractionForScroll(progress, knots);
+      lapProgress.current = progress;
 
       // Draw the outline in step with distance travelled.
       path.style.strokeDashoffset = `${total * (1 - lap)}`;
@@ -130,6 +135,7 @@ export function LapScroller({
   return (
     <>
       <ShaderBackground state={field} />
+      <CarSilhouette state={field} progress={lapProgress} />
 
       <div ref={containerRef} className="relative">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-2 lg:gap-16">
@@ -171,7 +177,7 @@ export function LapScroller({
               </svg>
               <div
                 ref={readoutRef}
-                className="tabular mt-4 text-center text-xs tracking-[0.18em] text-[#6B7280]"
+                className="tabular mt-4 text-center text-xs tracking-[0.18em] text-muted"
               >
                 — km/h
               </div>
@@ -190,21 +196,21 @@ export function LapScroller({
                   className="transition-opacity duration-500 motion-reduce:transition-none"
                   style={{ opacity: reduced || i === activeBeat ? 1 : 0.32 }}
                 >
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-[#FF2E17]">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-deploy">
                     {beat.kicker}
                   </div>
-                  <h2 className="display mt-3 text-3xl leading-tight text-[#F2F0EB] sm:text-4xl">
+                  <h2 className="display mt-3 text-3xl leading-tight text-ink sm:text-4xl">
                     {beat.title}
                   </h2>
-                  <p className="mt-4 max-w-md text-sm leading-relaxed text-[#8A8F98]">
+                  <p className="mt-4 max-w-md text-sm leading-relaxed text-clip">
                     {beat.body}
                   </p>
                   {beat.readout && (
-                    <div className="mt-6 inline-block border-l-2 border-[#FF2E17] pl-3">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-[#6B7280]">
+                    <div className="mt-6 inline-block border-l-2 border-deploy pl-3">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
                         {beat.readout.label}
                       </div>
-                      <div className="tabular text-xl text-[#F2F0EB]">
+                      <div className="tabular text-xl text-ink">
                         {beat.readout.value}
                       </div>
                     </div>
@@ -213,7 +219,7 @@ export function LapScroller({
                     <div className="mt-8">
                       <Link
                         href="/analysis"
-                        className="focus-ring inline-flex items-center gap-2 rounded bg-[#FF2E17] px-5 py-3 text-xs uppercase tracking-[0.18em] text-[#08090A] transition-opacity hover:opacity-90"
+                        className="focus-ring inline-flex items-center gap-2 rounded bg-deploy px-5 py-3 text-xs uppercase tracking-[0.18em] text-surface transition-opacity hover:opacity-90"
                       >
                         Open the analysis
                         <span aria-hidden="true">→</span>

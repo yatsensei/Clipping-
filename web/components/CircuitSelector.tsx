@@ -111,22 +111,22 @@ export function CircuitSelector({
             onClick={() => onSelect(c.circuit_id)}
             className={`focus-ring rounded border p-1.5 text-left transition-colors ${
               active
-                ? "border-[#FF2E17] bg-[#1C1F24]"
-                : "border-[#262A30] hover:border-[#6B7280]"
+                ? "border-deploy bg-panel-high"
+                : "border-line hover:border-muted"
             } ${!c.has_strategy ? "opacity-30 cursor-not-allowed" : ""}`}
             title={`${c.event_name} — ${c.provenance}`}
           >
             <MiniTrack id={c.circuit_id} active={active} />
             <div className="mt-1 flex items-baseline justify-between gap-1">
-              <span className="truncate text-[10px] text-[#F2F0EB]">
+              <span className="truncate text-[10px] text-ink">
                 {c.location}
               </span>
-              <span className="tabular text-[9px] text-[#6B7280]">
+              <span className="tabular text-[9px] text-muted">
                 R{c.round_number}
               </span>
             </div>
             {c.is_fallback && (
-              <span className="text-[9px] text-[#8A8F98]">{c.data_year} geometry</span>
+              <span className="text-[9px] text-clip">{c.data_year} geometry</span>
             )}
           </button>
         );

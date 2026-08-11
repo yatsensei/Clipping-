@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Nav";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { LapScroller } from "@/components/landing/LapScroller";
 import { type Geometry, type Strategy } from "@/lib/api";
 import { serverApi } from "@/lib/server-data";
@@ -26,17 +27,17 @@ export default async function Landing() {
   if (!geometry || !greedy) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
-        <div className="max-w-md rounded-lg border border-[#262A30] bg-[#141619] p-6">
+        <div className="max-w-md rounded-lg border border-line bg-panel p-6">
           <h1 className="display text-lg">CLIPPING</h1>
-          <p className="mt-3 text-sm text-[#FF2E17]">No circuit data found.</p>
-          <p className="mt-2 text-[11px] leading-relaxed text-[#6B7280]">
+          <p className="mt-3 text-sm text-deploy">No circuit data found.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted">
             The site reads a snapshot of the API from <code>web/public/api</code>.
             Regenerate it from the repository root:
           </p>
-          <pre className="mt-2 overflow-x-auto rounded bg-[#08090A] p-3 text-[11px]">
+          <pre className="mt-2 overflow-x-auto rounded bg-surface p-3 text-[11px]">
             uv run python -m scripts.export_static
           </pre>
-          {error && <p className="mt-3 text-[11px] text-[#6B7280]">{error}</p>}
+          {error && <p className="mt-3 text-[11px] text-muted">{error}</p>}
         </div>
       </main>
     );
@@ -48,17 +49,20 @@ export default async function Landing() {
           header inverts unpredictably as the background warms and cools. */}
       <header className="fixed inset-x-0 top-0 z-20 flex items-center justify-between gap-4 px-5 py-3">
         <Logo />
-        <Link
-          href="/analysis"
-          className="focus-ring rounded border border-[#262A30] bg-[#08090A]/70 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-[#F2F0EB] backdrop-blur-md transition-colors hover:border-[#FF2E17]"
-        >
-          Skip to the analysis →
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link
+            href="/analysis"
+            className="focus-ring rounded border border-line bg-surface/70 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-ink backdrop-blur-md transition-colors hover:border-deploy"
+          >
+            Skip to the analysis →
+          </Link>
+        </div>
       </header>
 
       <LapScroller geometry={geometry} greedy={greedy} />
 
-      <footer className="border-t border-[#262A30] px-5 py-10 text-[11px] leading-relaxed text-[#6B7280]">
+      <footer className="border-t border-line px-5 py-10 text-[11px] leading-relaxed text-muted">
         <div className="mx-auto max-w-7xl">
           <p className="max-w-2xl">
             Track geometry is derived from measured GPS across{" "}

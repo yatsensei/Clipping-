@@ -1,4 +1,4 @@
-import { Analysis } from "@/components/Analysis";
+﻿import { Analysis } from "@/components/Analysis";
 import { type CircuitListItem } from "@/lib/api";
 import { serverApi } from "@/lib/server-data";
 
@@ -16,19 +16,19 @@ export default async function Page() {
 
   if (error || circuits.length === 0) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#08090A] p-6">
-        <div className="max-w-md rounded-lg border border-[#262A30] bg-[#141619] p-6">
-          <h1 className="display text-lg text-[#F2F0EB]">CLIPPING</h1>
-          <p className="mt-3 text-sm text-[#FF2E17]">No circuit data found.</p>
-          <p className="mt-2 text-[11px] leading-relaxed text-[#6B7280]">
+      <main className="flex min-h-screen items-center justify-center bg-surface p-6">
+        <div className="max-w-md rounded-lg border border-line bg-panel p-6">
+          <h1 className="display text-lg text-ink">CLIPPING</h1>
+          <p className="mt-3 text-sm text-deploy">No circuit data found.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted">
             The site reads a snapshot of the API from <code>web/public/api</code>.
             Regenerate it from the repository root:
           </p>
-          <pre className="mt-2 overflow-x-auto rounded bg-[#08090A] p-3 text-[11px] text-[#F2F0EB]">
+          <pre className="mt-2 overflow-x-auto rounded bg-surface p-3 text-[11px] text-ink">
             uv run python -m scripts.export_static
           </pre>
           {error && (
-            <p className="mt-3 text-[11px] text-[#6B7280]">{error}</p>
+            <p className="mt-3 text-[11px] text-muted">{error}</p>
           )}
         </div>
       </main>

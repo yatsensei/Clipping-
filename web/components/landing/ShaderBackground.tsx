@@ -40,6 +40,13 @@ uniform float uSoc;
 uniform float uDeploy;
 uniform float uClip;
 
+// Palette supplied from CSS so the field follows the active theme.
+uniform vec3 uBase;
+uniform vec3 uEmber;
+uniform vec3 uCool;
+uniform vec3 uGrey;
+uniform float uLight;
+
 // Three rotated sine layers. Cheap, and at this scale indistinguishable from noise.
 float field(vec2 p) {
   float v = sin(p.x * 1.7 + p.y * 0.6);
@@ -61,13 +68,9 @@ void main() {
   float f = field(p + warp * 0.75 + t * 0.5);
   f = f * 0.5 + 0.5;
 
-  vec3 ember = vec3(1.00, 0.18, 0.09);   // --color-deploy
-  vec3 cool  = vec3(0.25, 0.88, 0.82);   // --color-harvest
-  vec3 grey  = vec3(0.54, 0.56, 0.60);   // --color-clip
-
   // A full store reads warm; a depleted one cools toward the harvest hue.
-  vec3 tint = mix(cool, ember, clamp(uSoc, 0.0, 1.0));
-  tint = mix(tint, grey, clamp(uClip, 0.0, 1.0));
+  vec3 tint = mix(uCool, uEmber, clamp(uSoc, 0.0, 1.0));
+  tint = mix(tint, uGrey, clamp(uClip, 0.0, 1.0));
 
   // Brightness follows stored energy, with deployment adding a little lift.
   float energy = clamp(uSoc * 0.75 + uDeploy * 0.35, 0.0, 1.0);
@@ -76,8 +79,11 @@ void main() {
   // Vignette keeps the centre of the page readable.
   float edge = smoothstep(1.25, 0.15, length(uv - 0.5) * 1.7);
 
-  vec3 base = vec3(0.031, 0.035, 0.039); // --color-void
-  gl_FragColor = vec4(base + tint * intensity * edge, 1.0);
+  // On a pale ground the field has to DARKEN the surface; adding light to near-white
+  // washes out to nothing and the background reads as a plain empty page.
+  float amount = intensity * edge;
+  vec3 lightMix = mix(uBase, tint, amount * 1.6);
+  gl_FragColor = vec4(mix(uBase + tint * amount, lightMix, uLight), 1.0);
 }
 `;
 
@@ -117,7 +123,8 @@ export function ShaderBackground({
       // Static fallback: the page must not depend on WebGL existing.
       failed.current = true;
       canvas.style.background =
-        "radial-gradient(ellipse at 50% 40%, #17110f 0%, #08090A 70%)";
+        "radial-gradient(ellipse at 50% 40%, " +
+        "color-mix(in srgb, var(--deploy) 12%, var(--surface)) 0%, var(--surface) 70%)";
       return;
     }
 
@@ -126,7 +133,8 @@ export function ShaderBackground({
     const program = gl.createProgram();
     if (!vs || !fs || !program) {
       canvas.style.background =
-        "radial-gradient(ellipse at 50% 40%, #17110f 0%, #08090A 70%)";
+        "radial-gradient(ellipse at 50% 40%, " +
+        "color-mix(in srgb, var(--deploy) 12%, var(--surface)) 0%, var(--surface) 70%)";
       return;
     }
     gl.attachShader(program, vs);
@@ -134,7 +142,8 @@ export function ShaderBackground({
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       canvas.style.background =
-        "radial-gradient(ellipse at 50% 40%, #17110f 0%, #08090A 70%)";
+        "radial-gradient(ellipse at 50% 40%, " +
+        "color-mix(in srgb, var(--deploy) 12%, var(--surface)) 0%, var(--surface) 70%)";
       return;
     }
     gl.useProgram(program);
@@ -150,7 +159,34 @@ export function ShaderBackground({
     gl.enableVertexAttribArray(aPos);
     gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
+    // Palette read from the stylesheet, so the shader and the page can never disagree
+    // about what "deploy red" is, and both follow the theme from one definition.
+    const palette = () => {
+      const styles = getComputedStyle(document.documentElement);
+      const rgb = (name: string, fallback: [number, number, number]) => {
+        const raw = styles.getPropertyValue(name).trim();
+        const parts = raw.startsWith("#")
+          ? [1, 3, 5].map((i) => parseInt(raw.slice(i, i + 2), 16))
+          : raw.match(/[\d.]+/g)?.slice(0, 3).map(Number);
+        return parts && parts.length === 3
+          ? (parts.map((v) => v / 255) as [number, number, number])
+          : fallback;
+      };
+      return {
+        base: rgb("--surface", [0.031, 0.035, 0.039]),
+        ember: rgb("--deploy", [1, 0.18, 0.09]),
+        cool: rgb("--harvest", [0.25, 0.88, 0.82]),
+        grey: rgb("--clip", [0.54, 0.56, 0.6]),
+        light: document.documentElement.dataset.theme === "light" ? 1 : 0,
+      };
+    };
+
     const uRes = gl.getUniformLocation(program, "uRes");
+    const uBase = gl.getUniformLocation(program, "uBase");
+    const uEmber = gl.getUniformLocation(program, "uEmber");
+    const uCool = gl.getUniformLocation(program, "uCool");
+    const uGrey = gl.getUniformLocation(program, "uGrey");
+    const uLight = gl.getUniformLocation(program, "uLight");
     const uTime = gl.getUniformLocation(program, "uTime");
     const uSoc = gl.getUniformLocation(program, "uSoc");
     const uDeploy = gl.getUniformLocation(program, "uDeploy");
@@ -174,6 +210,18 @@ export function ShaderBackground({
     let visible = true;
     let onScreen = true;
     const start = performance.now();
+
+    // Re-read only when the theme actually changes; getComputedStyle every frame would
+    // force a style recalculation 60 times a second for values that almost never move.
+    const applyPalette = () => {
+      const p = palette();
+      gl.uniform3fv(uBase, p.base);
+      gl.uniform3fv(uEmber, p.ember);
+      gl.uniform3fv(uCool, p.cool);
+      gl.uniform3fv(uGrey, p.grey);
+      gl.uniform1f(uLight, p.light);
+    };
+    applyPalette();
 
     const render = (now: number) => {
       resize();
@@ -203,6 +251,16 @@ export function ShaderBackground({
     // requestAnimationFrame is throttled to a stop.
     render(performance.now());
 
+    // Repaint on theme change, including when the loop is paused or motion is reduced.
+    const themeWatcher = new MutationObserver(() => {
+      applyPalette();
+      render(performance.now());
+    });
+    themeWatcher.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
     if (reduced) {
       // Still repaint so the field tracks the energy state, just without a running
       // clock — uTime stays pinned at 0, so nothing moves. Called directly rather than
@@ -211,6 +269,7 @@ export function ShaderBackground({
       const id = window.setInterval(() => render(performance.now()), 400);
       return () => {
         window.clearInterval(id);
+        themeWatcher.disconnect();
         stop();
       };
     }
@@ -238,6 +297,7 @@ export function ShaderBackground({
     return () => {
       stop();
       observer.disconnect();
+      themeWatcher.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("resize", resize);
       gl.deleteProgram(program);

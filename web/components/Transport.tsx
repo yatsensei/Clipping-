@@ -27,14 +27,14 @@ export function Transport({
     <div className="flex items-center gap-3 flex-wrap">
       <button
         onClick={onToggle}
-        className="focus-ring rounded border border-[#262A30] bg-[#1C1F24] px-3 py-1.5 text-xs uppercase tracking-[0.14em] hover:border-[#6B7280] transition-colors"
+        className="focus-ring rounded border border-line bg-panel-high px-3 py-1.5 text-xs uppercase tracking-[0.14em] hover:border-muted transition-colors"
         aria-pressed={playing}
       >
         {playing ? "Pause" : "Play"}
       </button>
       <button
         onClick={onRestart}
-        className="focus-ring rounded border border-[#262A30] px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-[#6B7280] hover:text-[#F2F0EB] hover:border-[#6B7280] transition-colors"
+        className="focus-ring rounded border border-line px-3 py-1.5 text-xs uppercase tracking-[0.14em] text-muted hover:text-ink hover:border-muted transition-colors"
       >
         Restart
       </button>
@@ -47,12 +47,12 @@ export function Transport({
           max={1000}
           value={Math.round(fraction * 1000)}
           onChange={(e) => onScrub(Number(e.target.value) / 1000)}
-          className="focus-ring w-full accent-[#FF2E17]"
+          className="focus-ring w-full accent-deploy"
           aria-label="Scrub through the lap"
         />
       </label>
 
-      <span className="tabular text-xs text-[#6B7280] w-24 text-right">
+      <span className="tabular text-xs text-muted w-24 text-right">
         {elapsed.toFixed(2)}s / {total.toFixed(2)}s
       </span>
 
@@ -64,8 +64,8 @@ export function Transport({
             aria-pressed={speed === s}
             className={`focus-ring tabular rounded px-2 py-1 text-[11px] transition-colors ${
               speed === s
-                ? "bg-[#262A30] text-[#F2F0EB]"
-                : "text-[#6B7280] hover:text-[#F2F0EB]"
+                ? "bg-line text-ink"
+                : "text-muted hover:text-ink"
             }`}
           >
             {s}×

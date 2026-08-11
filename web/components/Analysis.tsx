@@ -74,13 +74,13 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
   const circuit = circuits.find((c) => c.circuit_id === circuitId);
 
   return (
-    <div className="min-h-screen bg-[#08090A]">
+    <div className="min-h-screen bg-surface">
       <Nav />
       {circuit && (
-        <header className="border-b border-[#262A30] px-4 py-2.5 sm:px-6">
+        <header className="border-b border-line px-4 py-2.5 sm:px-6">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h1 className="text-sm text-[#F2F0EB]">{circuit.event_name}</h1>
-            <div className="tabular text-[11px] text-[#6B7280]">
+            <h1 className="text-sm text-ink">{circuit.event_name}</h1>
+            <div className="tabular text-[11px] text-muted">
               {(circuit.lap_distance_m / 1000).toFixed(3)} km ·{" "}
               {circuit.corner_count} corners · round {circuit.round_number} ·{" "}
               {circuit.provenance}
@@ -93,7 +93,7 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
         <main className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <div
-              className="flex rounded border border-[#262A30] overflow-hidden"
+              className="flex rounded border border-line overflow-hidden"
               role="group"
               aria-label="Deployment strategy"
             >
@@ -108,22 +108,22 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
                   title={MODE_DESCRIPTION[m]}
                   className={`focus-ring px-3 py-1.5 text-xs uppercase tracking-[0.14em] transition-colors ${
                     mode === m
-                      ? "bg-[#FF2E17] text-[#08090A]"
-                      : "text-[#6B7280] hover:text-[#F2F0EB]"
+                      ? "bg-deploy text-surface"
+                      : "text-muted hover:text-ink"
                   }`}
                 >
                   {MODE_LABEL[m]}
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-[#6B7280]">{MODE_DESCRIPTION[mode]}</p>
+            <p className="text-[11px] text-muted">{MODE_DESCRIPTION[mode]}</p>
           </div>
 
           {error && (
-            <div className="rounded border border-[#FF2E17] bg-[#141619] p-4 text-sm">
-              <p className="text-[#FF2E17]">Could not load this circuit.</p>
-              <p className="mt-1 text-[11px] text-[#6B7280]">{error}</p>
-              <p className="mt-2 text-[11px] text-[#6B7280]">
+            <div className="rounded border border-deploy bg-panel p-4 text-sm">
+              <p className="text-deploy">Could not load this circuit.</p>
+              <p className="mt-1 text-[11px] text-muted">{error}</p>
+              <p className="mt-2 text-[11px] text-muted">
                 Is the API running? <code>uv run uvicorn api.main:app</code>
               </p>
             </div>
@@ -134,7 +134,7 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
               {/* Fixed height, not intrinsic. Sizing the map by width alone let a tall
                   circuit run past the bottom of the viewport, so only half the lap was
                   ever visible; the SVG now letterboxes inside a box that always fits. */}
-              <div className="h-[46vh] min-h-[280px] rounded-lg border border-[#262A30] bg-[#141619] p-2 sm:h-[52vh] lg:h-[calc(100vh-15rem)] lg:max-h-[640px]">
+              <div className="h-[46vh] min-h-[280px] rounded-lg border border-line bg-panel p-2 sm:h-[52vh] lg:h-[calc(100vh-15rem)] lg:max-h-[640px]">
                 <TrackMap
                   geometry={geometry}
                   strategy={strategy}
@@ -157,12 +157,12 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
               <Legend />
 
               {!strategy.repeatable && strategy.repeatability_note && (
-                <p className="rounded border border-[#8A8F98] bg-[#141619] p-3 text-[11px] text-[#8A8F98]">
+                <p className="rounded border border-clip bg-panel p-3 text-[11px] text-clip">
                   {strategy.repeatability_note}
                 </p>
               )}
 
-              <div className="rounded-lg border border-[#262A30] bg-[#141619] p-3">
+              <div className="rounded-lg border border-line bg-panel p-3">
                 <Traces
                   strategy={strategy}
                   carIndex={playback.index}
@@ -173,7 +173,7 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
           )}
 
           {loading && !geometry && (
-            <div className="h-64 animate-pulse rounded-lg border border-[#262A30] bg-[#141619]" />
+            <div className="h-64 animate-pulse rounded-lg border border-line bg-panel" />
           )}
         </main>
 
@@ -183,7 +183,7 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
           )}
           {geometry && <Provenance provenance={geometry.provenance} />}
           <div>
-            <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-[#6B7280]">
+            <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-muted">
               Circuit
             </div>
             <CircuitSelector

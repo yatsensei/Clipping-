@@ -204,7 +204,7 @@ export function TrackMap({
   const carScale = view.scale > 0 ? CAR_PX / (GLYPH_LEN * view.scale) : 1;
 
   const batteryColour =
-    socPct < 12 ? TOKENS.clip : socPct < 35 ? "#FF8A3D" : TOKENS.harvest;
+    socPct < 12 ? TOKENS.clip : socPct < 35 ? TOKENS.warn : TOKENS.harvest;
   const cells = 5;
   const filled = Math.round((socPct / 100) * cells);
 
@@ -294,7 +294,7 @@ export function TrackMap({
       {/* Telemetry card: HTML, so its type stays crisp and fixed-size. */}
       {box.w > 0 && (
         <div
-          className="pointer-events-none absolute rounded-md border bg-[#141619]/95 px-3 py-2 shadow-lg backdrop-blur-sm"
+          className="pointer-events-none absolute rounded-md border bg-panel/95 px-3 py-2 shadow-lg backdrop-blur-sm"
           style={{
             left: cardLeft,
             top: cardTop,
@@ -305,12 +305,12 @@ export function TrackMap({
         >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="text-[8px] uppercase tracking-[0.18em] text-[#6B7280]">
+              <div className="text-[8px] uppercase tracking-[0.18em] text-muted">
                 Speed
               </div>
-              <div className="tabular -mt-0.5 text-[22px] leading-none text-[#F2F0EB]">
+              <div className="tabular -mt-0.5 text-[22px] leading-none text-ink">
                 {speed.toFixed(0)}
-                <span className="ml-1 text-[9px] text-[#6B7280]">km/h</span>
+                <span className="ml-1 text-[9px] text-muted">km/h</span>
               </div>
             </div>
             <span
@@ -328,7 +328,7 @@ export function TrackMap({
           <div className="mt-2 flex items-center gap-2">
             {/* Mini battery: five cells plus a terminal nub. */}
             <span className="flex items-center" aria-hidden="true">
-              <span className="flex h-[13px] w-[30px] items-center gap-[1.5px] rounded-[2px] border border-[#6B7280] px-[1.5px]">
+              <span className="flex h-[13px] w-[30px] items-center gap-[1.5px] rounded-[2px] border border-muted px-[1.5px]">
                 {Array.from({ length: cells }, (_, k) => (
                   <span
                     key={k}
@@ -339,17 +339,17 @@ export function TrackMap({
                   />
                 ))}
               </span>
-              <span className="h-[6px] w-[2px] rounded-r-sm bg-[#6B7280]" />
+              <span className="h-[6px] w-[2px] rounded-r-sm bg-muted" />
             </span>
-            <span className="tabular text-[13px] leading-none text-[#F2F0EB]">
+            <span className="tabular text-[13px] leading-none text-ink">
               {socPct.toFixed(0)}%
             </span>
-            <span className="tabular text-[9px] leading-none text-[#6B7280]">
+            <span className="tabular text-[9px] leading-none text-muted">
               {socMj.toFixed(2)} MJ
             </span>
           </div>
 
-          <div className="mt-1.5 text-[9px] leading-none text-[#6B7280]">
+          <div className="mt-1.5 text-[9px] leading-none text-muted">
             {state.detail}
           </div>
         </div>
