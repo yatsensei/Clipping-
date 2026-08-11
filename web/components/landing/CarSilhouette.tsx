@@ -23,6 +23,19 @@ import type { FieldState } from "./ShaderBackground";
  * Proportions follow the 2026 regulations rather than a generic wedge: narrower body,
  * reduced wheelbase, and the simpler front wing the rules mandate.
  */
+/**
+ * The car's own palette, mixed from the page's ink toward its surface.
+ *
+ * Not the panel/line tokens: those are near-black on the dark theme, and a near-black car
+ * on a near-black page at low opacity composites to a 5/255 difference — which is to say,
+ * invisible. Mixing ink into surface instead gives a silhouette that is a definite step
+ * away from the background in BOTH themes, lightening on dark and darkening on light.
+ */
+const SHELL = "color-mix(in srgb, var(--ink) 30%, var(--surface))";
+const SHELL_DEEP = "color-mix(in srgb, var(--ink) 17%, var(--surface))";
+const TRIM = "color-mix(in srgb, var(--ink) 48%, var(--surface))";
+const DIM_CELL = "color-mix(in srgb, var(--ink) 22%, var(--surface))";
+
 export function CarSilhouette({
   state,
   progress,
@@ -82,8 +95,8 @@ export function CarSilhouette({
       const filled = Math.round(s.soc * 6);
       cellsRef.current.forEach((cell, i) => {
         if (!cell) return;
-        cell.setAttribute("fill", i < filled ? colour : TOKENS.line);
-        cell.setAttribute("opacity", i < filled ? "0.95" : "0.35");
+        cell.setAttribute("fill", i < filled ? colour : DIM_CELL);
+        cell.setAttribute("opacity", i < filled ? "1" : "0.5");
       });
 
       // Drifts gently across the viewport as the lap progresses, so the car is not
@@ -118,13 +131,16 @@ export function CarSilhouette({
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 -z-[5] flex items-center justify-center overflow-hidden"
+      // Sat low rather than centred: at the vertical middle the energy strip lands
+      // directly behind the narrative paragraph, and a row of lit red cells under body
+      // text is the one place this must not compete for attention.
+      className="pointer-events-none fixed inset-0 -z-[5] flex items-end justify-center overflow-hidden pb-[7vh]"
       aria-hidden="true"
     >
       <svg
         ref={rootRef}
         viewBox="0 0 760 250"
-        className="w-[190%] max-w-none opacity-[0.16] sm:w-[130%] lg:w-[105%]"
+        className="w-[190%] max-w-none opacity-50 sm:w-[130%] lg:w-[105%]"
         style={{ willChange: "transform" }}
       >
         {/* Motion streaks behind the car. */}
@@ -146,34 +162,25 @@ export function CarSilhouette({
         {/* Floor and diffuser. */}
         <path
           d="M96 176 L640 176 L664 168 L668 156 L648 152 L120 152 Z"
-          fill={TOKENS.line}
-          opacity={0.75}
+          fill={SHELL_DEEP}
         />
 
         {/* Sidepod and engine cover, sweeping to the rear. */}
         <path
           d="M250 152 C300 150 330 140 356 126 C392 106 428 100 470 100 C520 100 566 112 596 128 L616 152 Z"
-          fill={TOKENS.panelHigh}
+          fill={SHELL}
         />
         {/* Nose and front wing. */}
-        <path
-          d="M96 168 L104 150 L150 144 L214 140 L250 152 Z"
-          fill={TOKENS.panelHigh}
-        />
-        <path
-          d="M74 176 L150 176 L150 166 L78 166 Z"
-          fill={TOKENS.line}
-          opacity={0.9}
-        />
+        <path d="M96 168 L104 150 L150 144 L214 140 L250 152 Z" fill={SHELL} />
+        <path d="M74 176 L150 176 L150 166 L78 166 Z" fill={TRIM} />
         {/* Rear wing, simplified per the 2026 movable-aero rules. */}
-        <path d="M604 96 L692 96 L692 106 L604 106 Z" fill={TOKENS.panelHigh} />
-        <path d="M646 106 L660 106 L660 150 L646 150 Z" fill={TOKENS.line} />
+        <path d="M604 96 L692 96 L692 106 L604 106 Z" fill={TRIM} />
+        <path d="M646 106 L660 106 L660 150 L646 150 Z" fill={SHELL_DEEP} />
 
         {/* Cockpit and halo — the halo carries the power-flow colour. */}
         <path
           d="M356 126 C372 112 396 106 420 106 L446 106 L440 126 Z"
-          fill={TOKENS.void}
-          opacity={0.55}
+          fill={SHELL_DEEP}
         />
         <g ref={glowRef} stroke={TOKENS.deploy} fill="none" strokeWidth={5} strokeLinecap="round">
           <path d="M352 124 C372 92 424 84 462 96" />
@@ -191,9 +198,8 @@ export function CarSilhouette({
             height={16}
             rx={3}
             fill="none"
-            stroke={TOKENS.muted}
+            stroke={TRIM}
             strokeWidth={1.5}
-            opacity={0.7}
           />
           {Array.from({ length: 6 }, (_, i) => (
             <rect
@@ -206,7 +212,7 @@ export function CarSilhouette({
               width={25}
               height={8}
               rx={1.5}
-              fill={TOKENS.line}
+              fill={DIM_CELL}
             />
           ))}
         </g>
@@ -232,9 +238,9 @@ function Wheel({
 }) {
   return (
     <g transform={`translate(${cx},${cy})`}>
-      <circle r={r} fill={TOKENS.void} opacity={0.9} />
-      <circle r={r} fill="none" stroke={TOKENS.muted} strokeWidth={3} opacity={0.8} />
-      <circle r={r * 0.42} fill={TOKENS.panelHigh} />
+      <circle r={r} fill={SHELL_DEEP} />
+      <circle r={r} fill="none" stroke={TRIM} strokeWidth={3} />
+      <circle r={r * 0.42} fill={SHELL} />
       <g ref={innerRef}>
         {[0, 60, 120, 180, 240, 300].map((angle) => (
           <rect
@@ -244,8 +250,7 @@ function Wheel({
             width={3}
             height={r * 0.8}
             rx={1.5}
-            fill={TOKENS.muted}
-            opacity={0.55}
+            fill={TRIM}
             transform={`rotate(${angle})`}
           />
         ))}

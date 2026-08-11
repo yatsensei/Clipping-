@@ -64,9 +64,20 @@
   --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
 }
 
+/*
+  The page background lives on <html> ONLY, never on <body>.
+
+  When both carry a background, html's propagates to the canvas and body's paints as an
+  ordinary element background — which sits ABOVE the negative z-index layer in the paint
+  order. That silently hid every background element on the landing page: the WebGL field
+  at z-index -10 and the car at -5 were both being painted over by body.
+*/
+html {
+  background: var(--surface);
+}
+
 html,
 body {
-  background: var(--surface);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   /* Telemetry readouts dominate, so monospace is the default rather than the exception. */
