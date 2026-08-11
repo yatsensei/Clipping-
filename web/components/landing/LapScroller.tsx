@@ -6,7 +6,6 @@ import type { Geometry, Strategy } from "@/lib/api";
 import { TOKENS, project } from "@/lib/track";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { activeBeatForScroll, buildBeats, lapFractionForScroll } from "./beats";
-import { CarSilhouette } from "./CarSilhouette";
 import { ShaderBackground, type FieldState } from "./ShaderBackground";
 
 /**
@@ -41,8 +40,6 @@ export function LapScroller({
   const carRef = useRef<SVGGElement>(null);
   const readoutRef = useRef<HTMLDivElement>(null);
   const field = useRef<FieldState>({ soc: 1, deploy: 0, clip: 0 });
-  // Shared with the background car, which drifts across the viewport as the lap runs.
-  const lapProgress = useRef(0);
 
   const [activeBeat, setActiveBeat] = useState(0);
   const reduced = useReducedMotion();
@@ -58,7 +55,6 @@ export function LapScroller({
       path.style.strokeDasharray = "none";
       path.style.strokeDashoffset = "0";
       field.current = { soc: 0.35, deploy: 0.2, clip: 0.4 };
-      lapProgress.current = 0.5;
       return;
     }
 
@@ -80,7 +76,6 @@ export function LapScroller({
         scrollable > 0 ? Math.min(Math.max(-rect.top / scrollable, 0), 1) : 0;
 
       const lap = lapFractionForScroll(progress, knots);
-      lapProgress.current = progress;
 
       // Draw the outline in step with distance travelled.
       path.style.strokeDashoffset = `${total * (1 - lap)}`;
@@ -135,7 +130,6 @@ export function LapScroller({
   return (
     <>
       <ShaderBackground state={field} />
-      <CarSilhouette state={field} progress={lapProgress} />
 
       <div ref={containerRef} className="relative">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-2 lg:gap-16">
