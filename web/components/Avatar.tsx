@@ -6,8 +6,8 @@ import { teamVars } from "@/lib/teams";
  * A driver portrait or team logo, or initials on the team colour when there is none.
  *
  * Server-safe: no hooks, and the presence check reads the build-time manifest. Team
- * logos are shown on a neutral panel rather than the team colour, because a logo is
- * already in its own colours and doubling them reads as a blob.
+ * logos sit on a pale tile in BOTH themes: wordmarks are drawn for light backgrounds
+ * (McLaren's is black on transparent), and a logo on the team colour reads as a blob.
  */
 export function Avatar({
   kind,
@@ -34,9 +34,10 @@ export function Avatar({
     return (
       <span
         className={`relative inline-block shrink-0 overflow-hidden ${shape} ${
-          round ? "ring-1 ring-line" : "bg-panel-high p-[12%]"
+          round ? "ring-1 ring-line" : "bg-[#f4f4f1] ring-1 ring-line"
         } ${className}`}
-        style={{ width: size, height: size }}
+        // Percentage padding resolves against the PARENT's width, so it is in pixels.
+        style={{ width: size, height: size, padding: round ? 0 : Math.round(size * 0.12) }}
       >
         <Image
           src={mediaUrl(credit)}

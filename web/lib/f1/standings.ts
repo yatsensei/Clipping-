@@ -84,7 +84,8 @@ export function driverEntities(rows: DriverStandingRow[]): Record<string, Entity
 
 export function constructorEntities(
   rows: ConstructorStandingRow[],
-  shortNames: Record<string, string> = {},
+  /** Display names to prefer over the API's ("McLaren" rather than "McLaren F1 Team"). */
+  names: Record<string, { name: string; short: string }> = {},
 ): Record<string, Entity> {
   const out: Record<string, Entity> = {};
   for (const r of rows) {
@@ -92,8 +93,8 @@ export function constructorEntities(
     out[id] = {
       id,
       kind: "constructors",
-      label: r.Constructor.name,
-      short: shortNames[id] ?? r.Constructor.name,
+      label: names[id]?.name ?? r.Constructor.name,
+      short: names[id]?.short ?? r.Constructor.name,
       teamId: id,
       number: null,
       nationality: r.Constructor.nationality,

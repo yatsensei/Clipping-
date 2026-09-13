@@ -58,7 +58,3 @@ export function teamVars(id: string | null | undefined): CSSProperties {
     "--team-on": t.on,
   } as CSSProperties;
 }
-
-export const TEAM_SHORT_NAMES: Record<string, string> = Object.fromEntries(
-  Object.values(TEAMS).map((t) => [t.id, t.short]),
-);

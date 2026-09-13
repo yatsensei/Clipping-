@@ -169,8 +169,9 @@ describe("entities", () => {
   });
 
   it("builds constructor entities and applies short names", () => {
-    const e = constructorEntities(teams(r14Teams), { mclaren: "McL" });
+    const e = constructorEntities(teams(r14Teams), { mclaren: { name: "McLaren", short: "McL" } });
     expect(e.mclaren?.short).toBe("McL");
+    expect(e.mclaren?.label).toBe("McLaren");
     expect(Object.keys(e)).toHaveLength(11);
   });
 });

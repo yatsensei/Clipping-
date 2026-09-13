@@ -1,6 +1,245 @@
 {
-  "generated": null,
-  "drivers": {},
-  "teams": {},
-  "missing": {}
+  "generated": "2026-09-13T14:01:31+00:00",
+  "drivers": {
+    "antonelli": {
+      "file": "drivers/antonelli.jpg",
+      "title": "File:Kimi Antonelli at the Melbourne Walk during the 2026 Australian Grand Prix (028A7923) cropped.jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Kimi_Antonelli_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A7923)_cropped.jpg"
+    },
+    "russell": {
+      "file": "drivers/russell.jpg",
+      "title": "File:KingsLeonSilverstne040724 (28 of 112) (53838006028) (cropped).jpg",
+      "license": "CC BY 2.0",
+      "license_url": "https://creativecommons.org/licenses/by/2.0",
+      "author": "Raph_PH",
+      "source_url": "https://commons.wikimedia.org/wiki/File:KingsLeonSilverstne040724_(28_of_112)_(53838006028)_(cropped).jpg"
+    },
+    "hamilton": {
+      "file": "drivers/hamilton.jpg",
+      "title": "File:Prime Minister Keir Starmer meets Sir Lewis Hamilton (54566928382) (cropped).jpg",
+      "license": "OGL 3",
+      "license_url": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3",
+      "author": "Picture by Lauren Hurley / No 10 Downing Street",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Prime_Minister_Keir_Starmer_meets_Sir_Lewis_Hamilton_(54566928382)_(cropped).jpg"
+    },
+    "norris": {
+      "file": "drivers/norris.jpg",
+      "title": "File:2024-08-25 Motorsport, Formel 1, Großer Preis der Niederlande 2024 STP 4016 by Stepro (cropped).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Steffen Prößdorf, crop by Cerebral726",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_4016_by_Stepro_(cropped).jpg"
+    },
+    "leclerc": {
+      "file": "drivers/leclerc.jpg",
+      "title": "File:2024-08-25 Motorsport, Formel 1, Großer Preis der Niederlande 2024 STP 3978 by Stepro (cropped2).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Steffen Prößdorf",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3978_by_Stepro_(cropped2).jpg"
+    },
+    "max_verstappen": {
+      "file": "drivers/max_verstappen.jpg",
+      "title": "File:2024-08-25 Motorsport, Formel 1, Großer Preis der Niederlande 2024 STP 3973 by Stepro (portrait cropped).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Steffen Prößdorf",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3973_by_Stepro_(portrait_cropped).jpg"
+    },
+    "piastri": {
+      "file": "drivers/piastri.jpg",
+      "title": "File:Oscar Piastri 2025 (cropped).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": null,
+      "source_url": "https://commons.wikimedia.org/wiki/File:Oscar_Piastri_2025_(cropped).jpg"
+    },
+    "hadjar": {
+      "file": "drivers/hadjar.jpg",
+      "title": "File:Isack Hadjar at the Melbourne Walk during the 2026 Australian Grand Prix (028A8753) cropped.jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Isack_Hadjar_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A8753)_cropped.jpg"
+    },
+    "lawson": {
+      "file": "drivers/lawson.jpg",
+      "title": "File:Liam Lawson at the Red Bull Fan Zone – Crown Riverwalk, Melbourne (028A7795).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Liam_Lawson_at_the_Red_Bull_Fan_Zone_%E2%80%93_Crown_Riverwalk,_Melbourne_(028A7795).jpg"
+    },
+    "gasly": {
+      "file": "drivers/gasly.jpg",
+      "title": "File:2022 French Grand Prix (52279066548) (cropped) (cropped).png",
+      "license": "CC BY 2.0",
+      "license_url": "https://creativecommons.org/licenses/by/2.0",
+      "author": "nabtifal",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2022_French_Grand_Prix_(52279066548)_(cropped)_(cropped).png"
+    },
+    "arvid_lindblad": {
+      "file": "drivers/arvid_lindblad.jpg",
+      "title": "File:Arvid Lindblad at the Red Bull Fan Zone – Crown Riverwalk, Melbourne (028A7869).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Arvid_Lindblad_at_the_Red_Bull_Fan_Zone_%E2%80%93_Crown_Riverwalk,_Melbourne_(028A7869).jpg"
+    },
+    "colapinto": {
+      "file": "drivers/colapinto.jpg",
+      "title": "File:Franco Colapinto at the Melbourne Walk during the 2026 Australian Grand Prix (028A8689).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Franco_Colapinto_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A8689).jpg"
+    },
+    "bearman": {
+      "file": "drivers/bearman.jpg",
+      "title": "File:2025 Japan GP - Haas - Oliver Bearman - Thursday (cropped02).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Liauzh",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2025_Japan_GP_-_Haas_-_Oliver_Bearman_-_Thursday_(cropped02).jpg"
+    },
+    "bortoleto": {
+      "file": "drivers/bortoleto.jpg",
+      "title": "File:Gabriel Bortoleto (cropped).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "GingerTom14",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Gabriel_Bortoleto_(cropped).jpg"
+    },
+    "hulkenberg": {
+      "file": "drivers/hulkenberg.jpg",
+      "title": "File:2019 Formula One tests Barcelona, Hulkenberg (40287128313) (headshot).jpg",
+      "license": "CC BY-SA 2.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+      "author": "Original:  Marc Alvarado / Derivative work:  Danyele",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2019_Formula_One_tests_Barcelona,_Hulkenberg_(40287128313)_(headshot).jpg"
+    },
+    "sainz": {
+      "file": "drivers/sainz.jpg",
+      "title": "File:Formula1Gabelhofen2022 (04) (cropped2).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Dorian Schuster (XaviYuahanda)",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Formula1Gabelhofen2022_(04)_(cropped2).jpg"
+    },
+    "albon": {
+      "file": "drivers/albon.jpg",
+      "title": "File:Alex Albon at the Melbourne Walk during the 2026 Australian Grand Prix (028A8626) (cropped).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Alex_Albon_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A8626)_(cropped).jpg"
+    },
+    "ocon": {
+      "file": "drivers/ocon.jpg",
+      "title": "File:Esteban Ocon 2024 Suzuka (cropped).jpg",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "author": "Rrtb505050",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Esteban_Ocon_2024_Suzuka_(cropped).jpg"
+    },
+    "alonso": {
+      "file": "drivers/alonso.jpg",
+      "title": "File:Fernando Alonso racing at the 2024 F1 in Schools World Finals (cropped).jpg",
+      "license": "CC BY 2.0",
+      "license_url": "https://creativecommons.org/licenses/by/2.0",
+      "author": "Off The Track Media",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Fernando_Alonso_racing_at_the_2024_F1_in_Schools_World_Finals_(cropped).jpg"
+    },
+    "tsunoda": {
+      "file": "drivers/tsunoda.jpg",
+      "title": "File:Yuki Tsunoda at the Melbourne Walk during the 2026 Australian Grand Prix (028A8096).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Yuki_Tsunoda_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A8096).jpg"
+    },
+    "stroll": {
+      "file": "drivers/stroll.jpg",
+      "title": "File:FIA F1 Austria 2022 Lance Stroll (cropped 2).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Lukas Raich",
+      "source_url": "https://commons.wikimedia.org/wiki/File:FIA_F1_Austria_2022_Lance_Stroll_(cropped_2).jpg"
+    },
+    "bottas": {
+      "file": "drivers/bottas.jpg",
+      "title": "File:Valtteri Bottas at the 2026 Adelaide Motorsport Festival (028A7556).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Yu Chu Chin",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Valtteri_Bottas_at_the_2026_Adelaide_Motorsport_Festival_(028A7556).jpg"
+    },
+    "perez": {
+      "file": "drivers/perez.jpg",
+      "title": "File:2021 US GP driver parade (cropped2).jpg",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "author": "Grahampurse",
+      "source_url": "https://commons.wikimedia.org/wiki/File:2021_US_GP_driver_parade_(cropped2).jpg"
+    }
+  },
+  "teams": {
+    "mercedes": null,
+    "ferrari": null,
+    "mclaren": {
+      "file": "teams/mclaren.png",
+      "title": "File:McLaren Racing logo.png",
+      "license": "Public domain",
+      "license_url": null,
+      "author": "https://www.mclaren.com/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:McLaren_Racing_logo.png"
+    },
+    "red_bull": null,
+    "rb": null,
+    "alpine": {
+      "file": "teams/alpine.svg",
+      "title": "File:Alpine F1 Team Logo.svg",
+      "license": "Public domain",
+      "license_url": null,
+      "author": "Alpine F1 Team",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Alpine_F1_Team_Logo.svg"
+    },
+    "haas": {
+      "file": "teams/haas.svg",
+      "title": "File:TGR Haas F1 Team Logo (2026).svg",
+      "license": "Public domain",
+      "license_url": null,
+      "author": "Haas F1 Team",
+      "source_url": "https://commons.wikimedia.org/wiki/File:TGR_Haas_F1_Team_Logo_(2026).svg"
+    },
+    "audi": {
+      "file": "teams/audi.svg",
+      "title": "File:Audif1.com logo17 (cropped).svg",
+      "license": "Public domain",
+      "license_url": null,
+      "author": "Audi Revolut F1 Team / Sauber Motorsports AG",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Audif1.com_logo17_(cropped).svg"
+    },
+    "williams": {
+      "file": "teams/williams.svg",
+      "title": "File:Atlassian Williams F1 Team logo.svg",
+      "license": "Public domain",
+      "license_url": null,
+      "author": "Atlassian Williams F1 Team",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Atlassian_Williams_F1_Team_logo.svg"
+    },
+    "aston_martin": null,
+    "cadillac": null
+  },
+  "missing": {
+    "mercedes": "no_image",
+    "ferrari": "no_image",
+    "red_bull": "no_image",
+    "rb": "no_image",
+    "aston_martin": "no_image",
+    "cadillac": "no_image"
+  }
 }

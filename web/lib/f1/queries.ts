@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { TEAM_SHORT_NAMES } from "@/lib/teams";
+import { TEAMS } from "@/lib/teams";
 import {
   getConstructorStandingsByRound,
   getCurrentConstructorStandings,
@@ -77,7 +77,7 @@ export const loadStandings = cache(async (kind: StandingsKind): Promise<Standing
   ]);
   const entities: Record<string, Entity> = {};
   for (const rows of [...rounds, current.rows]) {
-    Object.assign(entities, constructorEntities(rows, TEAM_SHORT_NAMES));
+    Object.assign(entities, constructorEntities(rows, TEAMS));
   }
   return {
     kind,
