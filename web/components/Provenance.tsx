@@ -1,6 +1,7 @@
 "use client";
 
 import type { Provenance as ProvenanceData } from "@/lib/api";
+import { TOKENS } from "@/lib/track";
 
 /**
  * Says where the numbers came from and what is measured versus modelled.
@@ -41,10 +42,10 @@ export function Provenance({ provenance }: { provenance: ProvenanceData }) {
 
 export function Legend() {
   const items = [
-    { colour: "#FF2E17", label: "Deploying", width: 7, note: "thicker = more power" },
-    { colour: "#3FE0D0", label: "Harvesting", width: 4 },
-    { colour: "#8A8F98", label: "Clipping", width: 5.5, note: "asked for power, none left" },
-    { colour: "#262A30", label: "Coasting / braking", width: 2.5 },
+    { colour: TOKENS.deploy, label: "Deploying", width: 7, note: "thicker = more power" },
+    { colour: TOKENS.harvest, label: "Harvesting", width: 4 },
+    { colour: TOKENS.clip, label: "Clipping", width: 5.5, note: "asked for power, none left" },
+    { colour: TOKENS.line, label: "Coasting / braking", width: 2.5 },
   ];
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2">

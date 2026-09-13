@@ -134,8 +134,10 @@ export function LapScroller({
       <div ref={containerRef} className="relative">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-2 lg:gap-16">
           {/* Pinned track. */}
-          <div className="lg:sticky lg:top-0 lg:h-screen lg:self-start">
-            <div className="flex h-[52vh] flex-col justify-center lg:h-screen">
+          {/* Pinned under the site nav, not the viewport top, or the bar covers the
+              first 54px of the outline. */}
+          <div className="lg:sticky lg:top-[var(--nav-h)] lg:h-[calc(100vh-var(--nav-h))] lg:self-start">
+            <div className="flex h-[52vh] flex-col justify-center lg:h-[calc(100vh-var(--nav-h))]">
               {/* flex-1 + min-h-0 so the outline is bounded by the pinned panel and
                   letterboxes inside it. Sized by width alone, a tall circuit rendered
                   taller than the viewport and pushed the readout off the bottom. */}
@@ -209,10 +211,18 @@ export function LapScroller({
                       </div>
                     </div>
                   )}
+                  {i === 0 && (
+                    <Link
+                      href="/energy/analysis"
+                      className="focus-ring mt-8 inline-block text-[11px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-ink"
+                    >
+                      Skip to the analysis →
+                    </Link>
+                  )}
                   {beat.id === "release" && (
                     <div className="mt-8">
                       <Link
-                        href="/analysis"
+                        href="/energy/analysis"
                         className="focus-ring inline-flex items-center gap-2 rounded bg-deploy px-5 py-3 text-xs uppercase tracking-[0.18em] text-surface transition-opacity hover:opacity-90"
                       >
                         Open the analysis

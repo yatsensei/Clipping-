@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Archivo, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { Nav } from "@/components/Nav";
+import { SiteFooter } from "@/components/SiteFooter";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -24,10 +26,13 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clipping — 2026 F1 energy deployment",
+  title: {
+    default: "Clipping — F1 analytics",
+    template: "%s — Clipping",
+  },
   description:
-    "Where a 2026 Formula 1 car should deploy its battery around a lap, solved by " +
-    "dynamic programming on a physics model fitted to real telemetry.",
+    "Formula 1 analytics: live 2026 standings, driver and team profiles, and a " +
+    "physics-based optimiser for where a 2026 car should deploy its battery around a lap.",
 };
 
 export default function RootLayout({
@@ -43,8 +48,11 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="antialiased">
-        {children}
+      {/* No background on body — it lives on html (see globals.css). */}
+      <body className="flex min-h-screen flex-col antialiased">
+        <Nav />
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
         <Analytics />
       </body>
     </html>

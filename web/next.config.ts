@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // The energy optimiser moved under /energy when the site grew other sections.
+  async redirects() {
+    return [
+      { source: "/analysis", destination: "/energy/analysis", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

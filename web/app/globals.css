@@ -17,6 +17,9 @@
 :root {
   color-scheme: dark;
 
+  /* Fixed so pinned layouts can sit exactly beneath the site nav. */
+  --nav-h: 54px;
+
   --surface: #08090a;
   --panel: #141619;
   --panel-high: #1c1f24;
@@ -91,6 +94,30 @@ html.theme-ready body * {
     background-color 200ms ease,
     border-color 200ms ease,
     color 200ms ease;
+}
+
+/*
+  Team colours. A component sets --team / --team-strong / --team-on inline (lib/teams.ts)
+  and these helpers decide how the colour is used. Fills always take the true livery
+  colour; TEXT takes a darkened variant on the light theme, because most liveries
+  (McLaren papaya, Mercedes teal, Alpine blue) fall well under a readable contrast ratio
+  on white. Server components never know the theme, so the switch lives here, not in props.
+*/
+.team-text {
+  color: var(--team);
+}
+[data-theme="light"] .team-text {
+  color: var(--team-strong);
+}
+.team-bar {
+  background: var(--team);
+  color: var(--team-on);
+}
+.team-wash {
+  background: color-mix(in srgb, var(--team) 16%, var(--panel));
+}
+.team-edge {
+  border-color: var(--team);
 }
 
 /* Telemetry readouts must not jitter as digits change. */
