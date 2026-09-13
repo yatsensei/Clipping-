@@ -33,8 +33,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 
 # The brief names the constant-deployment baseline "naive"; the code calls it "uniform".
+# "measured" is the driver's own lap reconstructed by inverse dynamics, where a 2026 lap
+# exists for the circuit.
 STRATEGY_ALIASES = {"naive": "uniform", "uniform": "uniform",
-                    "optimal": "optimal", "greedy": "greedy"}
+                    "optimal": "optimal", "greedy": "greedy",
+                    "measured": "measured", "driver": "measured"}
 
 
 class ArtifactMissing(RuntimeError):
@@ -188,6 +191,8 @@ def model_basis() -> dict:
         "vehicle": {
             "fitted": {
                 "cd_a_m2": fit["cd_a"],
+                "cd_a_straight_m2": fit.get("cd_a_low"),
+                "cd_a_straight_range_m2": fit.get("cd_a_low_range"),
                 "cl_a_m2": fit["cl_a"],
                 "mu_lat": fit["mu_lat"],
                 "mu_brake": fit["mu_brake"],
@@ -213,15 +218,28 @@ def _accuracy() -> dict | None:
     if not path.exists():
         return None
     df = pd.read_csv(path)
-    return {
+    out = {
         "circuits": int(len(df)),
         "mean_speed_rmse_kph": round(float(df["rmse_kph"].mean()), 2),
         "mean_abs_lap_error_s": round(float(df["lap_err_s"].abs().mean()), 3),
         "note": (
-            "Forward simulation versus the measured qualifying lap, on the circuits "
-            "with 2026 telemetry. This is how far the physics model sits from reality."
+            "The driver's deployment is reconstructed from the measured qualifying lap "
+            "by inverse dynamics and replayed through the model, on the circuits with "
+            "2026 telemetry. One track grip factor per circuit is fitted to the lap "
+            "time; the speed error is then how far the physics sits from reality."
         ),
     }
+    if "unscaled_lap_err_s" in df.columns:
+        out["mean_abs_lap_error_before_grip_fit_s"] = round(
+            float(df["unscaled_lap_err_s"].abs().mean()), 3
+        )
+        out["mean_speed_bias_kph"] = round(float(df["bias_kph"].mean()), 2)
+        out["mean_vmax_error_kph"] = round(float(df["vmax_err_kph"].mean()), 2)
+        out["grip_scale_range"] = [
+            round(float(df["grip_scale"].min()), 3),
+            round(float(df["grip_scale"].max()), 3),
+        ]
+    return out
 
 
 def clear_caches() -> None:

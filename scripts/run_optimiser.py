@@ -53,6 +53,18 @@ def circuit_density(circuit_id: str, default: float) -> tuple[float, bool]:
     return air_density(r["pressure_mbar"], r["air_temp_c"], r["humidity_pct"] or 0.0), True
 
 
+def grip_factor(circuit_id: str) -> tuple[float, bool]:
+    """The circuit's fitted track grip factor, or 1.0 where no 2026 lap exists to fit."""
+    path = PROCESSED_DIR / "grip_factors.json"
+    if not path.exists():
+        return 1.0, False
+    table = json.loads(path.read_text(encoding="utf-8"))
+    entry = table.get(circuit_id)
+    if not entry:
+        return 1.0, False
+    return float(entry["grip_scale"]), True
+
+
 def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | None:
     path = PROCESSED_DIR / "circuits" / f"{circuit_id}.json"
     if not path.exists():
@@ -60,7 +72,8 @@ def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | 
     geo = json.loads(path.read_text(encoding="utf-8"))
 
     rho, measured = circuit_density(circuit_id, float(fit["air_density"]))
-    vehicle = VehicleModel.from_fit(fit, air_density=rho)
+    grip, grip_fitted = grip_factor(circuit_id)
+    vehicle = VehicleModel.from_fit(fit, air_density=rho, grip_scale=grip)
 
     curvature = np.asarray(geo["curvature_1_per_m"], dtype=float)
     gradient = np.asarray(geo["gradient"], dtype=float)
@@ -84,6 +97,8 @@ def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | 
         "provenance": geo["diagnostics"]["provenance"],
         "air_density": rho,
         "air_density_measured": measured,
+        "grip_scale": grip,
+        "grip_scale_fitted": grip_fitted,
         "soc_start_mj": soc_start_j / 1e6,
         "harvest_cap_mj": OPERATIVE_HARVEST_CAP_J / 1e6,
         "solve_seconds": solve_s,
@@ -117,6 +132,41 @@ def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | 
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    strategies = {
+        "optimal": _series(optimal.speed_mps, optimal.deploy_power_w,
+                           optimal.harvest_power_w, optimal.soc_j, optimal.clipping,
+                           optimal.deploy_fraction),
+        "uniform": _series(uniform.speed_mps, uniform.deploy_power_w,
+                           uniform.harvest_power_w, uniform.soc_j, uniform.clipping,
+                           uniform.deploy_fraction),
+        "greedy": _series(greedy.speed_mps, greedy.deploy_power_w,
+                          greedy.harvest_power_w, greedy.soc_j, greedy.clipping,
+                          greedy.deploy_fraction),
+    }
+    # The driver's own lap, reconstructed by scripts.simulate_reference where a 2026
+    # lap exists. Inferred rather than modelled, and labelled so downstream.
+    measured_path = PROCESSED_DIR / "measured" / f"{circuit_id}.json"
+    if measured_path.exists():
+        m = json.loads(measured_path.read_text(encoding="utf-8"))
+        strategies["measured"] = {
+            "speed_kph": m["speed_kph"],
+            "deploy_kw": m["deploy_kw"],
+            "harvest_kw": m["harvest_kw"],
+            "soc_mj": m["soc_mj"],
+            "clipping": m["clipping"],
+            "deploy_fraction": m["deploy_fraction"],
+        }
+        record.update({
+            "measured_lap_s": m["lap_time_s"],
+            "measured_driver": m["driver"],
+            "measured_deployed_mj": m["energy_deployed_mj"],
+            "measured_harvested_mj": m["energy_harvested_mj"],
+            "measured_soc_start_mj": m["soc_start_mj"],
+            "measured_soc_end_mj": m["soc_end_mj"],
+            "measured_unexplained_mj": m["unexplained_mj"],
+            "measured_note": m["note"],
+        })
+
     payload = {
         **record,
         "baseline_statement": (
@@ -126,17 +176,7 @@ def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | 
         ),
         "harvest_cap_basis": OPERATIVE_HARVEST_CAP_BASIS,
         "distance_m": geo["distance_m"],
-        "strategies": {
-            "optimal": _series(optimal.speed_mps, optimal.deploy_power_w,
-                               optimal.harvest_power_w, optimal.soc_j, optimal.clipping,
-                               optimal.deploy_fraction),
-            "uniform": _series(uniform.speed_mps, uniform.deploy_power_w,
-                               uniform.harvest_power_w, uniform.soc_j, uniform.clipping,
-                               uniform.deploy_fraction),
-            "greedy": _series(greedy.speed_mps, greedy.deploy_power_w,
-                              greedy.harvest_power_w, greedy.soc_j, greedy.clipping,
-                              greedy.deploy_fraction),
-        },
+        "strategies": strategies,
     }
     (OUT_DIR / f"{circuit_id}.json").write_text(json.dumps(payload), encoding="utf-8")
     return record
@@ -219,11 +259,15 @@ def main() -> int:
           f"{df['gain_vs_uniform_s'].max():+.3f} s")
     print(f"Optimal is periodic on {int(df['optimal_periodic'].sum())}/{len(df)} circuits; "
           f"greedy on {int(df['greedy_periodic'].sum())}/{len(df)}.")
-    print(f"Greedy is faster than optimal on "
-          f"{int((df['gain_vs_greedy_s'] < 0).sum())}/{len(df)} circuits, by "
-          f"{-df['gain_vs_greedy_s'].min():.2f} s at most — while ending the lap "
-          f"{df['greedy_energy_debt_mj'].mean():.2f} MJ in debt on average.")
-    print("That debt is why greedy is not the baseline: it cannot be run twice.")
+    faster = int((df["gain_vs_greedy_s"] < 0).sum())
+    print(f"Greedy is faster than optimal on {faster}/{len(df)} circuits and slower on "
+          f"{len(df) - faster}, clipping for {df['greedy_clip_pct'].mean():.0f}% of the "
+          f"lap and ending it {df['greedy_energy_debt_mj'].mean():.2f} MJ in debt on average.")
+    print("It is timed on the same physics as the optimiser, so its clipping costs time.")
+    fitted = int(df["grip_scale_fitted"].sum())
+    print(f"Track grip factor fitted on {fitted}/{len(df)} circuits "
+          f"(range {df['grip_scale'].min():.2f}-{df['grip_scale'].max():.2f}); "
+          "1.00 where no 2026 lap exists.")
     print(f"\nWritten: {OUT_DIR} and strategy_comparison.csv")
     return 0
 

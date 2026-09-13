@@ -1,7 +1,7 @@
 """Longitudinal point-mass vehicle model.
 
     F_traction = eta * P_available / v
-    F_drag     = 0.5 * rho * Cd*A * v^2
+    F_drag     = 0.5 * rho * Cd*A * v^2      Cd*A has two states: see cd_a_low
     F_roll     = Crr * m * g
     F_grade    = m * g * sin(theta)
     m * dv/dt  = F_traction - F_drag - F_roll - F_grade
@@ -52,16 +52,36 @@ class VehicleModel:
     # goes to infinity. Real tyres saturate and the measured envelope does plateau.
     # Omitting this made the simulated lap 13 s too fast and let Monaco reach 329 km/h.
     a_lat_ceiling: float = 50.0
+    # 2026 active aero. The car runs a low-drag state on the straights and reverts to
+    # the high-downforce state off throttle and in corners. The switch is not in the
+    # public data, but its effect is: at terminal speed the full-throttle drag area
+    # is bounded above by what the engine plus the tapered MGU-K can push, and that
+    # bound sits well under the drag area measured on coasting. `cd_a` is the
+    # high-drag state (fitted on coast-down); this is the straight-line one, applied
+    # when the car is under power with little lateral load. None = single state.
+    cd_a_low: float | None = None
+    # Lateral acceleration below which the car counts as straight-line [m/s^2].
+    straight_a_lat: float = 2.0
+    # Track grip factor on the lateral limit (mu_lat and the tyre ceiling together).
+    # Surface, compound and temperature differ between circuits, and a point-mass model
+    # on a pooled racing line cannot see any of it: a single envelope fitted across all
+    # sessions is right on average and wrong by ±10% at individual tracks. Fitted per
+    # 2026-native circuit so the replayed reference lap matches its measured time;
+    # 1.0 elsewhere, and reported wherever it is used.
+    grip_scale: float = 1.0
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_fit(cls, fit: dict, air_density: float | None = None) -> "VehicleModel":
+    def from_fit(
+        cls, fit: dict, air_density: float | None = None, grip_scale: float = 1.0,
+    ) -> "VehicleModel":
         """Build from scripts/fit_vehicle.py output.
 
         `air_density` overrides the pooled value so each circuit can be simulated at its
-        own conditions — Mexico City's thin air is a ~20% change in drag.
+        own conditions — Mexico City's thin air is a ~20% change in drag. `grip_scale`
+        is the circuit's track grip factor from scripts/simulate_reference.py.
         """
         missing = [
             k for k in ("cd_a", "crr", "cl_a", "mu_lat", "mu_brake", "p_ice_w",
@@ -84,12 +104,34 @@ class VehicleModel:
             regen_efficiency=float(fit.get("regen_efficiency", 0.9)),
             f_offthrottle_n=float(fit.get("f_offthrottle_n", 0.0)),
             a_lat_ceiling=float(fit.get("a_lat_ceiling", 50.0)),
+            cd_a_low=(
+                float(fit["cd_a_low"])
+                if fit.get("cd_a_low") is not None and np.isfinite(fit["cd_a_low"])
+                else None
+            ),
+            grip_scale=float(grip_scale),
         )
 
     # -- forces ------------------------------------------------------------------------
 
-    def drag_force(self, v: np.ndarray | float) -> np.ndarray | float:
-        return 0.5 * self.air_density * self.cd_a * np.square(v)
+    def drag_area(
+        self, v: np.ndarray | float = 0.0, curvature: np.ndarray | float = 0.0,
+        driving: np.ndarray | bool = False,
+    ) -> np.ndarray | float:
+        """Cd*A in force at this point: low-drag under power on a straight, else high."""
+        if self.cd_a_low is None:
+            return self.cd_a
+        a_lat = np.square(np.asarray(v, dtype=float)) * np.abs(
+            np.asarray(curvature, dtype=float)
+        )
+        low = np.asarray(driving, dtype=bool) & (a_lat < self.straight_a_lat)
+        return np.where(low, self.cd_a_low, self.cd_a)
+
+    def drag_force(
+        self, v: np.ndarray | float, curvature: np.ndarray | float = 0.0,
+        driving: np.ndarray | bool = False,
+    ) -> np.ndarray | float:
+        return 0.5 * self.air_density * self.drag_area(v, curvature, driving) * np.square(v)
 
     def rolling_force(self) -> float:
         return self.crr * self.mass_kg * GRAVITY_M_S2
@@ -100,9 +142,14 @@ class VehicleModel:
         return self.mass_kg * GRAVITY_M_S2 * g / np.sqrt(1.0 + g * g)
 
     def resistive_force(
-        self, v: np.ndarray | float, gradient: np.ndarray | float = 0.0
+        self, v: np.ndarray | float, gradient: np.ndarray | float = 0.0,
+        curvature: np.ndarray | float = 0.0, driving: np.ndarray | bool = False,
     ) -> np.ndarray | float:
-        return self.drag_force(v) + self.rolling_force() + self.grade_force(gradient)
+        return (
+            self.drag_force(v, curvature, driving)
+            + self.rolling_force()
+            + self.grade_force(gradient)
+        )
 
     # -- power -------------------------------------------------------------------------
 
@@ -142,7 +189,7 @@ class VehicleModel:
 
     def lateral_limit(self, v: np.ndarray | float) -> np.ndarray | float:
         """Peak lateral acceleration available at speed v [m/s^2], with tyre saturation."""
-        return np.minimum(
+        return self.grip_scale * np.minimum(
             self.mu_lat * (GRAVITY_M_S2 + self.downforce_n(v) / self.mass_kg),
             self.a_lat_ceiling,
         )
@@ -193,13 +240,14 @@ class VehicleModel:
         k = np.abs(np.asarray(curvature, dtype=float))
         k = np.maximum(k, 1e-12)
 
-        downforce_term = self.mu_lat * self.air_density * self.cl_a / (2.0 * self.mass_kg)
+        mu = self.mu_lat * self.grip_scale
+        downforce_term = mu * self.air_density * self.cl_a / (2.0 * self.mass_kg)
         denom = k - downforce_term
         with np.errstate(divide="ignore", invalid="ignore"):
             v_downforce = np.where(
-                denom > 1e-12, np.sqrt(self.mu_lat * GRAVITY_M_S2 / denom), np.inf
+                denom > 1e-12, np.sqrt(mu * GRAVITY_M_S2 / denom), np.inf
             )
-        v_saturated = np.sqrt(self.a_lat_ceiling / k)
+        v_saturated = np.sqrt(self.a_lat_ceiling * self.grip_scale / k)
         return np.minimum(v_downforce, v_saturated)
 
     def terminal_speed_mps(self, deploy_fraction: float = 1.0) -> float:
@@ -210,8 +258,10 @@ class VehicleModel:
         the gradient step it replaced could oscillate and silently return a stale value.
         """
         def net(v: float) -> float:
+            # Flat out on a straight: the low-drag state, if the car has one.
             return float(
-                self.tractive_force(v, deploy_fraction) - self.resistive_force(v)
+                self.tractive_force(v, deploy_fraction)
+                - self.resistive_force(v, driving=True)
             )
 
         lo, hi = 5.0, 200.0

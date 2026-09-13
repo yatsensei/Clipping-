@@ -93,6 +93,11 @@ ASSUMED_REGEN_EFFICIENCY = 0.90
 @dataclass
 class FitReport:
     cd_a: float
+    cd_a_low: float
+    cd_a_low_range: list[float]
+    cd_a_low_n: int
+    cd_a_low_speed_kph: float
+    cd_a_low_basis: str
     crr: float
     f_offthrottle_n: float
     cd_a_ci: tuple[float, float]
@@ -383,6 +388,65 @@ def fit_power(df: pd.DataFrame, mass: float, rho: float, cd_a: float, crr: float
     return out
 
 
+def fit_straight_drag(
+    df: pd.DataFrame, mass: float, rho: float, crr: float, p_ice: float, eta: float,
+) -> dict:
+    """Bound the low-drag (straight-line) aero state from terminal-speed running.
+
+    The 2026 car has two aero states and the switch is not in the public data. Its
+    effect is: flat out at the top of the speed range the car sits at terminal
+    velocity, and there the drag power cannot exceed what the engine plus the tapered
+    MGU-K can deliver. That is an UPPER bound on Cd*A under power — reached if the
+    driver deploys the full ceiling — and a lower bound follows from deploying nothing.
+    The bound sits well under the coast-down value, so coasting is a different state.
+
+    The upper bound is adopted: the least drag reduction the data forces.
+    """
+    full = df[
+        (df["throttle"] >= FULL_THROTTLE_MIN)
+        & (~df["brake"])
+        & df["a_lat"].notna()
+        & (df["a_lat"] < MAX_LATERAL_FOR_STRAIGHT)
+        & df["is_clean"]
+        & (df["lap_time_ratio"] < FLYING_LAP_MAX_RATIO)
+    ]
+    empty = {"cd_a_low": float("nan"), "cd_a_low_range": [float("nan")] * 2,
+             "cd_a_low_n": 0, "cd_a_low_speed_kph": float("nan"),
+             "cd_a_low_basis": "not enough terminal-speed samples"}
+    # The highest 10 km/h band with enough samples to average the quantisation noise.
+    kph = full["v"].to_numpy() * 3.6
+    for lo in range(350, 300, -10):
+        band = full[(kph >= lo) & (kph < lo + 10)]
+        if len(band) >= 200:
+            break
+    else:
+        return empty
+
+    v = float(band["v"].mean())
+    a = float(band["accel"].mean())
+    a_se = float(band["accel"].std() / np.sqrt(len(band)))
+    ceiling = max_deploy_power_w(v * 3.6, "normal")
+    roll = crr * mass * GRAVITY_M_S2
+
+    def cda(p_elec: float, accel: float) -> float:
+        return (eta * (p_ice + p_elec) / v - mass * accel - roll) / (0.5 * rho * v * v)
+
+    upper = cda(ceiling, a)
+    lower = cda(0.0, a)
+    return {
+        "cd_a_low": float(upper),
+        "cd_a_low_range": [float(lower), float(upper)],
+        "cd_a_low_ci": [float(cda(ceiling, a + 2 * a_se)), float(cda(ceiling, a - 2 * a_se))],
+        "cd_a_low_n": int(len(band)),
+        "cd_a_low_speed_kph": float(v * 3.6),
+        "cd_a_low_basis": (
+            f"upper bound from {len(band)} full-throttle samples at "
+            f"{v * 3.6:.0f} km/h (mean accel {a:+.2f} m/s^2): drag power cannot exceed "
+            f"eta*(P_ice + {ceiling / 1e3:.0f} kW ceiling)"
+        ),
+    }
+
+
 def main() -> int:
     warnings.filterwarnings("ignore")
     enable()
@@ -410,9 +474,17 @@ def main() -> int:
     grip = fit_grip(df, mass, rho)
     brake = fit_braking(df, mass, rho, drag["cd_a"], grip["cl_a"])
     power = fit_power(df, mass, rho, drag["cd_a"], drag["crr"])
+    straight = fit_straight_drag(
+        df, mass, rho, drag["crr"], power["p_ice_w"], power["driveline_efficiency"]
+    )
 
     report = FitReport(
         cd_a=drag["cd_a"],
+        cd_a_low=straight["cd_a_low"],
+        cd_a_low_range=straight["cd_a_low_range"],
+        cd_a_low_n=straight["cd_a_low_n"],
+        cd_a_low_speed_kph=straight["cd_a_low_speed_kph"],
+        cd_a_low_basis=straight["cd_a_low_basis"],
         crr=drag["crr"],
         f_offthrottle_n=drag["f_offthrottle_n"],
         cd_a_ci=drag["cd_a_ci"],
@@ -439,8 +511,12 @@ def main() -> int:
         mass_kg=mass,
         sessions=[f"2026 {c} Q" for c in used],
         assumptions=[
-            "Drag fitted on coasting only; full-throttle data cannot identify drag "
-            "because electrical deployment is unobservable.",
+            "High-drag Cd*A fitted on coasting only; full-throttle data cannot identify "
+            "drag because electrical deployment is unobservable.",
+            "The straight-line (active aero) Cd*A is the UPPER bound from terminal-speed "
+            "running, reached only if the driver deploys the full tapered ceiling "
+            "there; the true value lies between that and the ICE-only figure in "
+            "cd_a_low_range. The aero state is not in the public data.",
             f"P_ice ({ASSUMED_P_ICE_W / 1000:.0f} kW) and driveline efficiency "
             f"({ASSUMED_DRIVELINE_EFFICIENCY}) are PUBLISHED/ASSUMED values, not fits. "
             "The telemetry cannot identify them: observed total power stays flat while "
@@ -478,6 +554,10 @@ def _print_report(r: FitReport, drag: dict) -> None:
     print(f"     {r.coast_n:,} straight-line coasting samples over "
           f"{lo:.0f}-{hi:.0f} km/h")
     print(f"     R^2 {r.coast_r2:.3f}, condition number {r.coast_condition_number:.1f}")
+    lo_r, hi_r = r.cd_a_low_range
+    print(f"  Cd*A (straight)      {r.cd_a_low:8.3f} m^2   "
+          f"bound; true value in [{lo_r:.3f}, {hi_r:.3f}]")
+    print(f"     {r.cd_a_low_basis}")
     print(f"  Cl*A                 {r.cl_a:8.3f} m^2")
     print(f"  mu_lat               {r.mu_lat:8.3f}        "
           f"(envelope R^2 {r.grip_r2:.3f}, {r.grip_n} speed bins)")

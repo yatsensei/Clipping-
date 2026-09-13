@@ -65,18 +65,25 @@ def transition(
     f_harvest = p_harvest_req / v
     coasting = harvest_ctl > 0.0
     f_drive = np.where(coasting, 0.0, f_drive)
-    f_resist = vehicle.resistive_force(v, gradient_i) + np.where(
-        coasting, vehicle.f_offthrottle_n + f_harvest, 0.0
-    )
+    # Under power on a straight the car is in its low-drag aero state; lifting drops it.
+    f_resist = vehicle.resistive_force(
+        v, gradient_i, curvature_i, driving=not coasting
+    ) + np.where(coasting, vehicle.f_offthrottle_n + f_harvest, 0.0)
 
     accel = (f_drive - f_resist) / vehicle.mass_kg
-    v_next = np.sqrt(np.maximum(v * v + 2.0 * accel * step_m, MIN_SPEED_MPS**2))
-    v_next = np.minimum(v_next, ceiling_next)
+    v_free = np.sqrt(np.maximum(v * v + 2.0 * accel * step_m, MIN_SPEED_MPS**2))
+    v_next = np.minimum(v_free, ceiling_next)
 
     v_avg = np.maximum(0.5 * (v + v_next), MIN_SPEED_MPS)
     dt = step_m / v_avg
 
-    energy_out = np.where(coasting, 0.0, p_elec_used) * dt
+    # Where the ceiling clamps the step the car is braking for it, and the throttle is
+    # closed for that part of the step: no electrical energy is delivered there, however
+    # much was requested. Bill only the share of the step spent accelerating.
+    gain = np.maximum(v_free * v_free - v * v, 1e-9)
+    on_power = np.clip((np.minimum(v_next, v_free) ** 2 - v * v) / gain, 0.0, 1.0)
+    on_power = np.where(v_free > v, on_power, 1.0)
+    energy_out = np.where(coasting, 0.0, p_elec_used * on_power) * dt
 
     # Harvest comes from two places: the deliberate control, and any braking the speed
     # ceiling forces. Only the part of the deceleration produced by the brakes is

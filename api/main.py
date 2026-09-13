@@ -26,6 +26,7 @@ from api.schemas import (
     CircuitListItem,
     ComparisonResponse,
     GeometryResponse,
+    MeasuredSummary,
     MetaResponse,
     StrategyResponse,
     StrategySummary,
@@ -137,7 +138,9 @@ def circuit_geometry(circuit_id: str) -> GeometryResponse:
 @app.get("/circuits/{circuit_id}/strategy", response_model=StrategyResponse)
 def circuit_strategy(
     circuit_id: str,
-    mode: str = Query("optimal", description="optimal | naive (= uniform) | greedy"),
+    mode: str = Query(
+        "optimal", description="optimal | naive (= uniform) | greedy | measured"
+    ),
 ) -> StrategyResponse:
     """Per-distance-point traces for one strategy, on the shared distance index."""
     _get_circuit(circuit_id)
@@ -150,10 +153,17 @@ def circuit_strategy(
             detail=f"unknown mode '{mode}'; expected one of "
                    f"{sorted(set(store.STRATEGY_ALIASES))}",
         ) from None
+    if key not in data["strategies"]:
+        raise HTTPException(
+            status_code=404,
+            detail=f"no '{key}' lap for '{circuit_id}': it needs a 2026 session with "
+                   "telemetry, and this circuit uses earlier-year geometry only",
+        )
 
     series = data["strategies"][key]
     lap_s = float(data[f"{key}_lap_s"])
     periodic = bool(data[f"{key}_periodic"]) if f"{key}_periodic" in data else True
+    measured = key == "measured"
 
     return StrategyResponse(
         circuit_id=circuit_id,
@@ -167,16 +177,22 @@ def circuit_strategy(
         soc_mj=series["soc_mj"],
         clipping=series["clipping"],
         deploy_fraction=series["deploy_fraction"],
-        soc_start_mj=data["soc_start_mj"],
+        # A qualifying lap starts with a full store; the strategies start at half.
+        soc_start_mj=data["measured_soc_start_mj"] if measured else data["soc_start_mj"],
         energy_deployed_mj=round(float(data.get(f"{key}_deployed_mj", float("nan"))), 3),
         repeatable=periodic,
         repeatability_note=(
+            "A qualifying lap: it starts with a full store and is not required to end "
+            "energy-neutral, so its time is not comparable with the strategies."
+            if measured else
             None if periodic else
             "This lap ends with less energy than it started, so it cannot be repeated. "
             "Its lap time is not comparable with strategies that are energy-neutral."
         ),
         provenance=store.provenance_for(circuit_id),
-        data_type="model_output",
+        data_type="inferred_from_telemetry" if measured else "model_output",
+        driver=data.get("measured_driver") if measured else None,
+        inference_note=data.get("measured_note") if measured else None,
     )
 
 
@@ -211,9 +227,24 @@ def circuit_comparison(circuit_id: str) -> ComparisonResponse:
         gain_vs_greedy_s=round(float(d["gain_vs_greedy_s"]), 3),
         greedy_energy_debt_mj=round(float(d["greedy_energy_debt_mj"]), 3),
         greedy_caveat=(
-            "Greedy is usually faster over a single lap, but it ends with an empty "
-            "store and cannot be run again. The headline gain is measured against "
+            "Greedy deploys whenever it can, empties the store early and spends most "
+            "of the lap clipping. It ends with less energy than it started, so it "
+            "cannot be run again either way. The headline gain is measured against "
             "uniform deployment, which is repeatable."
+        ),
+        measured=(
+            MeasuredSummary(
+                driver=d["measured_driver"],
+                lap_time_s=round(float(d["measured_lap_s"]), 3),
+                energy_deployed_mj=round(float(d["measured_deployed_mj"]), 3),
+                energy_harvested_mj=round(float(d["measured_harvested_mj"]), 3),
+                soc_start_mj=round(float(d["measured_soc_start_mj"]), 3),
+                soc_end_mj=round(float(d["measured_soc_end_mj"]), 3),
+                unexplained_mj=round(float(d["measured_unexplained_mj"]), 3),
+                grip_scale=round(float(d.get("grip_scale", 1.0)), 3),
+                note=d["measured_note"],
+            )
+            if "measured" in d["strategies"] else None
         ),
         strategies=[summary(k) for k in ("optimal", "uniform", "greedy")],
         learned_policy=store.policy_scores().get(circuit_id),

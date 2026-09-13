@@ -1,5 +1,13 @@
 {
   "cd_a": 0.9677699002642388,
+  "cd_a_low": 0.905947934453538,
+  "cd_a_low_range": [
+    0.7606249214566442,
+    0.905947934453538
+  ],
+  "cd_a_low_n": 537,
+  "cd_a_low_speed_kph": 341.1918182373047,
+  "cd_a_low_basis": "upper bound from 537 full-throttle samples at 341 km/h (mean accel -0.10 m/s^2): drag power cannot exceed eta*(P_ice + 76 kW ceiling)",
   "crr": 0.012,
   "f_offthrottle_n": 1197.0364940022878,
   "cd_a_ci": [
@@ -67,7 +75,8 @@
     "2026 suzuka Q"
   ],
   "assumptions": [
-    "Drag fitted on coasting only; full-throttle data cannot identify drag because electrical deployment is unobservable.",
+    "High-drag Cd*A fitted on coasting only; full-throttle data cannot identify drag because electrical deployment is unobservable.",
+    "The straight-line (active aero) Cd*A is the UPPER bound from terminal-speed running, reached only if the driver deploys the full tapered ceiling there; the true value lies between that and the ICE-only figure in cd_a_low_range. The aero state is not in the public data.",
     "P_ice (400 kW) and driveline efficiency (0.95) are PUBLISHED/ASSUMED values, not fits. The telemetry cannot identify them: observed total power stays flat while the electrical ceiling falls, showing the cars do not deploy the full ceiling, so the P_obs = eta*(P_ice + P_elec) relation does not hold.",
     "Crr is NOT identifiable from this data and is assumed to be 0.012. Rolling resistance, engine braking and off-throttle regen are all constant forces, so nothing in the speed dependence separates them; only their sum is measured.",
     "Mass 778 kg = 768 kg regulatory minimum + 10 kg assumed qualifying fuel load.",

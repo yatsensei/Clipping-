@@ -12,7 +12,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-DataType = Literal["measured_gps_derived", "model_output"]
+DataType = Literal["measured_gps_derived", "model_output", "inferred_from_telemetry"]
+StrategyMode = Literal["optimal", "uniform", "greedy", "measured"]
 
 
 class Provenance(BaseModel):
@@ -88,7 +89,7 @@ class GeometryResponse(BaseModel):
 
 class StrategyResponse(BaseModel):
     circuit_id: str
-    mode: Literal["optimal", "uniform", "greedy"]
+    mode: StrategyMode
     requested_mode: str
     lap_time_s: float
     distance_m: list[float]
@@ -104,6 +105,9 @@ class StrategyResponse(BaseModel):
     repeatability_note: str | None
     provenance: Provenance
     data_type: DataType
+    # Set on the measured mode only: whose lap, and what the reconstruction rests on.
+    driver: str | None = None
+    inference_note: str | None = None
 
 
 class StrategySummary(BaseModel):
@@ -114,6 +118,22 @@ class StrategySummary(BaseModel):
     clipping_pct: float
     repeatable: bool
     soc_end_mj: float
+
+
+class MeasuredSummary(BaseModel):
+    driver: str
+    lap_time_s: float
+    energy_deployed_mj: float
+    energy_harvested_mj: float
+    soc_start_mj: float
+    soc_end_mj: float
+    unexplained_mj: float = Field(
+        description="Electrical energy the lap needed that the modelled engine plus the "
+                    "tapered MGU-K could not have supplied. Zero means the model "
+                    "explains the lap."
+    )
+    grip_scale: float
+    note: str
 
 
 class ComparisonResponse(BaseModel):
@@ -129,6 +149,9 @@ class ComparisonResponse(BaseModel):
     gain_vs_greedy_s: float
     greedy_energy_debt_mj: float
     greedy_caveat: str
+    # Present where a 2026 lap exists: how the optimiser's answer compares with what the
+    # driver did, as reconstructed by inverse dynamics.
+    measured: MeasuredSummary | None = None
     strategies: list[StrategySummary]
     learned_policy: LearnedPolicyScore | None
     provenance: Provenance
