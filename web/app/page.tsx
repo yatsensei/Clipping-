@@ -1,20 +1,47 @@
-import Link from "next/link";
+import { EnergyExplainer } from "@/components/home/EnergyExplainer";
+import { Hero } from "@/components/home/Hero";
+import { LastRaceCard, NextRaceCard } from "@/components/home/RaceCards";
+import type { Comparison, Geometry, Strategy } from "@/lib/api";
+import { loadHome } from "@/lib/f1/queries";
+import { serverApi } from "@/lib/server-data";
 
-// Placeholder until the homepage lands; keeps the build green through the restructure.
-export default function Home() {
+// Live standings and results, revalidated hourly. The energy figure beside them comes
+// from the committed snapshot and never changes between builds.
+export const revalidate = 3600;
+
+const FEATURE_CIRCUIT = "monza";
+
+export default async function Home() {
+  const [home, energy] = await Promise.all([loadHome(), loadEnergy()]);
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-      <h1 className="display text-3xl text-ink">CLIPPING</h1>
-      <p className="mt-4 max-w-lg font-sans text-sm leading-relaxed text-muted">
-        Formula 1 analytics. Standings, profiles and a physics-based energy deployment
-        optimiser for the 2026 regulations.
-      </p>
-      <Link
-        href="/energy"
-        className="focus-ring mt-8 inline-block rounded bg-deploy px-5 py-3 text-xs uppercase tracking-[0.18em] text-surface"
-      >
-        Energy deployment →
-      </Link>
+    <main className="mx-auto max-w-7xl space-y-10 px-4 py-10 sm:px-6 sm:py-14">
+      <Hero drivers={home.drivers} constructors={home.constructors} progress={home.progress} />
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <LastRaceCard race={home.lastRace} />
+        <NextRaceCard race={home.nextRace} />
+      </section>
+
+      <EnergyExplainer {...energy} />
     </main>
   );
+}
+
+async function loadEnergy(): Promise<{
+  geometry: Geometry | null;
+  strategy: Strategy | null;
+  comparison: Comparison | null;
+}> {
+  try {
+    const [geometry, strategy, comparison] = await Promise.all([
+      serverApi.geometry(FEATURE_CIRCUIT),
+      serverApi.strategy(FEATURE_CIRCUIT, "optimal"),
+      serverApi.comparison(FEATURE_CIRCUIT),
+    ]);
+    return { geometry, strategy, comparison };
+  } catch {
+    // The snapshot is optional here; the explainer still reads without the figure.
+    return { geometry: null, strategy: null, comparison: null };
+  }
 }

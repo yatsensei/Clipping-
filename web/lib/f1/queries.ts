@@ -5,6 +5,7 @@ import {
   getCurrentConstructorStandings,
   getCurrentDriverStandings,
   getDriverStandingsByRound,
+  getLastRace,
   getSchedule,
   getSeasonQualifying,
   getSeasonResults,
@@ -16,6 +17,7 @@ import {
   driverEntities,
   driverSeasonRows,
   headToHead,
+  nextRace,
   progression,
   teammateOf,
   toSnapshot,
@@ -25,6 +27,7 @@ import type {
   Entity,
   HeadToHead,
   Progression,
+  Race,
   StandingsKind,
   StandingsRow,
   StandingsSnapshot,
@@ -83,6 +86,33 @@ export const loadStandings = cache(async (kind: StandingsKind): Promise<Standing
       .map((rows, i) => toSnapshot(kind, i + 1, names.get(i + 1) ?? null, rows))
       .filter((s) => s.rows.length > 0),
     entities,
+  };
+});
+
+// ---------------------------------------------------------------------- home
+
+export interface HomeData {
+  drivers: StandingsData;
+  constructors: StandingsData;
+  lastRace: Race | null;
+  nextRace: Race | null;
+  /** Rounds completed / scheduled. */
+  progress: { done: number; total: number };
+}
+
+export const loadHome = cache(async (): Promise<HomeData> => {
+  const [drivers, constructors, lastRace, schedule] = await Promise.all([
+    loadStandings("drivers"),
+    loadStandings("constructors"),
+    getLastRace(),
+    getSchedule(),
+  ]);
+  return {
+    drivers,
+    constructors,
+    lastRace,
+    nextRace: nextRace(schedule, new Date()),
+    progress: { done: lastRace ? Number(lastRace.round) : 0, total: schedule.length },
   };
 });
 
