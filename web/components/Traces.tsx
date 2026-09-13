@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { Strategy } from "@/lib/api";
+import { ticks } from "@/lib/chart";
 import { TOKENS } from "@/lib/track";
 
 /**
@@ -27,23 +28,6 @@ function pathFor(values: number[], min: number, max: number, height = HEIGHT): s
       return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
-}
-
-/** Round tick values covering [min, max], at roughly `target` intervals. */
-function ticks(min: number, max: number, target = 4): number[] {
-  const span = max - min;
-  if (span <= 0) return [min];
-  const raw = span / target;
-  const magnitude = 10 ** Math.floor(Math.log10(raw));
-  // Snap the interval to something a person would choose: 1, 2, 2.5, 5 or 10.
-  const step =
-    magnitude * ([1, 2, 2.5, 5, 10].find((m) => raw <= m * magnitude) ?? 10);
-
-  const out: number[] = [];
-  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) {
-    out.push(+v.toFixed(6));
-  }
-  return out;
 }
 
 const GUTTER = 34; // room for the y-axis labels, in pixels
