@@ -21,7 +21,9 @@ type Params = { params: Promise<{ constructorId: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { constructorId } = await params;
   const profile = await loadTeamProfile(constructorId);
-  return { title: profile ? profile.entity.label : "Team not found" };
+  // See drivers/[driverId]: a 404 status has to be decided before streaming starts.
+  if (!profile) notFound();
+  return { title: profile.entity.label };
 }
 
 export default async function TeamPage({ params }: Params) {

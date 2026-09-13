@@ -22,7 +22,10 @@ type Params = { params: Promise<{ driverId: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { driverId } = await params;
   const profile = await loadDriverProfile(driverId);
-  return { title: profile ? profile.entity.label : "Driver not found" };
+  // Decided here, not only in the page: metadata resolves before the loading boundary
+  // starts streaming, so this is what makes an unknown id a real 404 status.
+  if (!profile) notFound();
+  return { title: profile.entity.label };
 }
 
 export default async function DriverPage({ params }: Params) {

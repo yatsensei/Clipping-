@@ -1,10 +1,22 @@
 # Clipping
 
-**Where should a 2026 Formula 1 car deploy its battery around a lap?**
+**A Formula 1 analytics site, and the physics underneath it.**
 
-A physics-informed optimiser that computes the lap-time-optimal electrical deployment
-strategy for every circuit on the 2026 calendar, built on real telemetry, and an
-interactive visualiser that animates the result.
+Live 2026 championship standings you can scrub round by round, a profile for every
+driver and team, and the feature the project began as: a physics-informed optimiser
+that computes the lap-time-optimal electrical deployment strategy for every circuit on
+the calendar, built on real telemetry, with an interactive visualiser that animates the
+result.
+
+| Section | Route | Data |
+|---|---|---|
+| Home | `/` | live standings, last and next race |
+| Standings | `/standings/drivers`, `/standings/constructors` | live, every round |
+| Profiles | `/drivers/[id]`, `/teams/[id]` | live results, qualifying, head-to-head |
+| Energy deployment | `/energy`, `/energy/analysis` | committed model output |
+| Credits | `/credits` | image licences and data sources |
+
+The sections below are about the optimiser, which is where the engineering is.
 
 ---
 
@@ -339,19 +351,46 @@ Contrary to expectation, headroom-to-taper is *not* a dominant feature — it ra
 
 Python 3.11 · FastF1 · NumPy / SciPy · LightGBM · FastAPI · Next.js 16 · TypeScript · WebGL
 
+## Live data
+
+Standings, results, qualifying and the calendar come from
+[Jolpica-F1](https://api.jolpi.ca/), the maintained successor to the Ergast API, fetched by
+server components at request time and cached by Next's Data Cache: completed rounds are
+immutable and cache for a week, the current round and season-wide tables refresh hourly.
+Pages carry `revalidate = 3600`, so a result is on the site within the hour with no
+deploy. The fetcher (`web/lib/f1/jolpica.ts`) queues calls through a small limiter and
+sends a descriptive `User-Agent`, both of which Jolpica requires; set `F1_USER_AGENT` to
+override the default. Every transform from API rows to what the page shows is a pure
+function in `web/lib/f1/standings.ts`, tested against captured responses:
+
+```bash
+uv run python -m scripts.capture_fixtures   # refresh web/lib/f1/__fixtures__/
+```
+
+Driver portraits and team logos are freely licensed images from Wikimedia Commons,
+fetched with attribution and committed under `web/public/media/`:
+
+```bash
+uv run python -m scripts.fetch_media        # --force to refetch, --ids norris mclaren
+```
+
+Anyone without a usable image is shown as initials on the team colour; `/credits` lists
+every image's licence and author. Team colours are transcribed from the broadcast values
+in `web/lib/teams.ts`, with a darkened variant for text on the light theme.
+
 ## Running locally
 
 Requires Python 3.11+ and Node 20.9+.
 
 ```bash
-# Frontend only — it reads a committed snapshot of the API, so this is enough
+# Frontend — the energy pages read a committed snapshot, the rest fetches Jolpica live
 cd web && npm install && npm run dev
 ```
 
-The site is static. Every API endpoint here is a pure reader, so the service is
-snapshotted to `web/public/api/` by `scripts/export_static.py` and the deployed build has
-no backend at all. To run against the live FastAPI instead — worth doing when changing the
-API itself — start it and point the frontend at it:
+The energy feature is static. Every API endpoint here is a pure reader, so the service
+is snapshotted to `web/public/api/` by `scripts/export_static.py` and the deployed build
+needs no Python at all. To run against the live FastAPI instead — worth doing when
+changing the API itself — start it and point the frontend at it:
 
 ```bash
 uv sync
@@ -378,10 +417,11 @@ uv run python -m scripts.export_static       # refresh the frontend's data snaps
 
 ## Deploying
 
-The frontend is a static Next.js build with the data baked in, so it deploys anywhere
-that serves files. On Vercel, import the repository and set **Root Directory to `web`** —
-that is the only setting a monorepo like this needs. No environment variables, no
-backend, nothing to keep warm.
+On Vercel, import the repository and set **Root Directory to `web`** — that is the only
+setting a monorepo like this needs. The energy pages prerender at build; the live pages
+are ISR and regenerate hourly from Jolpica. A build makes around forty Jolpica calls
+against a limit of 500 an hour, so it is fine to deploy often but not every few minutes.
+No environment variables are required (`F1_USER_AGENT` is optional).
 
 Re-run `scripts.export_static` and commit `web/public/api/` whenever the optimiser output
 changes; the build has no Python available to regenerate it.
@@ -390,7 +430,7 @@ Tests:
 
 ```bash
 uv run pytest          # 64 tests — physics, optimiser constraints, API contracts
-cd web && npm test     # 21 tests — animation timing, scroll mapping
+cd web && npm test     # 44 tests — standings transforms on real API captures, animation timing
 ```
 
 ## Repository layout
@@ -403,8 +443,9 @@ energy/       Battery model, deployment taper, harvest
 optimiser/    Dynamic programming solver and baseline strategies
 ml/           Feature engineering and the learned policy
 api/          FastAPI service exposing precomputed strategies
-web/          Next.js frontend — landing page and analysis view
-scripts/      Pipeline entry points
+web/          Next.js site — standings, profiles, and the energy pages
+web/lib/f1/   Jolpica fetcher, pure standings transforms, captured fixtures
+scripts/      Pipeline entry points, fixture capture, media fetch
 tests/        Physics unit tests and optimiser constraint checks
 ```
 
