@@ -31,13 +31,18 @@ the constraint can be checked rather than trusted.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 
-from config.regulations import ERSK_MAX_POWER_W, ES_USABLE_WINDOW_J, OPERATIVE_HARVEST_CAP_J
-from physics.simulate import braking_profile, cornering_profile
+from config.regulations import ES_USABLE_WINDOW_J, OPERATIVE_HARVEST_CAP_J
+from physics.simulate import LapResult, rollout, speed_ceiling
+from physics.step import MIN_SPEED_MPS, transition
 from physics.vehicle import VehicleModel
+
+__all__ = ["solve", "rollout", "speed_ceiling", "DPResult", "DEFAULT_CONTROLS"]
+
+# The optimiser's result is the same type every other policy produces, with the
+# multiplier and notes filled in. Kept under its old name for callers.
+DPResult = LapResult
 
 # Deployment fractions. Negative values are deliberate off-throttle harvesting - the
 # "super clipping" of lifting at the end of a straight to refill the battery, accepting a
@@ -46,105 +51,15 @@ DEFAULT_CONTROLS = (-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0)
 
 DEFAULT_N_SOC = 81
 DEFAULT_N_SPEED = 96
-MIN_SPEED_MPS = 5.0
 INF = 1e18
 # Each step of the harvest-cap search is a full DP solve, so both loops stay short.
 BRACKET_STEPS = 7
 BISECT_STEPS = 9
 
 
-@dataclass
-class DPResult:
-    lap_time_s: float
-    deploy_fraction: np.ndarray     # control actually applied, per grid point
-    speed_mps: np.ndarray
-    soc_j: np.ndarray
-    deploy_power_w: np.ndarray
-    harvest_power_w: np.ndarray
-    clipping: np.ndarray
-    energy_deployed_j: float
-    energy_harvested_j: float
-    soc_start_j: float
-    soc_end_j: float
-    harvest_multiplier: float
-    feasible: bool
-    notes: list[str]
-
-    @property
-    def soc_deficit_j(self) -> float:
-        return self.soc_start_j - self.soc_end_j
-
-
-def _is_periodic(result: DPResult, soc_start_j: float) -> bool:
+def _is_periodic(result: LapResult, soc_start_j: float) -> bool:
     """Did the lap end with at least the energy it started with?"""
     return bool(result.soc_end_j >= soc_start_j)
-
-
-def speed_ceiling(
-    curvature: np.ndarray, gradient: np.ndarray, step_m: float, vehicle: VehicleModel
-) -> np.ndarray:
-    """Cornering- and braking-limited speed, independent of the deployment strategy."""
-    v_cap = vehicle.terminal_speed_mps(1.0) * 1.02
-    v_corner = cornering_profile(curvature, vehicle, v_cap)
-    return braking_profile(v_corner, step_m, vehicle, gradient, curvature)
-
-
-def _transition(
-    v: np.ndarray,
-    control: float,
-    curvature_i: float,
-    gradient_i: float,
-    ceiling_next: float,
-    step_m: float,
-    vehicle: VehicleModel,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Advance every speed on the grid by one step under one control.
-
-    Returns (next speed, elapsed time, electrical energy drawn, energy harvested).
-    Energy drawn is the request before any state-of-charge limit is applied; the caller
-    handles running out, because that is what clipping is.
-    """
-    v = np.maximum(v, MIN_SPEED_MPS)
-
-    deploy = max(control, 0.0)
-    harvest_ctl = max(-control, 0.0)
-
-    p_elec = vehicle.electrical_power_w(v, deploy)          # after the regulatory taper
-    p_prop = vehicle.driveline_efficiency * (vehicle.p_ice_w + p_elec)
-    f_power = p_prop / v
-    f_grip = vehicle.max_tractive_force(v, curvature_i)
-    f_drive = np.minimum(f_power, f_grip)
-
-    # Deliberate off-throttle harvesting: the MGU-K applies a retarding force, and the
-    # ICE is not driving.
-    p_harvest_req = harvest_ctl * ERSK_MAX_POWER_W
-    f_harvest = p_harvest_req / v
-    coasting = harvest_ctl > 0.0
-    f_drive = np.where(coasting, 0.0, f_drive)
-    f_resist = vehicle.resistive_force(v, gradient_i) + np.where(
-        coasting, vehicle.f_offthrottle_n + f_harvest, 0.0
-    )
-
-    accel = (f_drive - f_resist) / vehicle.mass_kg
-    v_next = np.sqrt(np.maximum(v * v + 2.0 * accel * step_m, MIN_SPEED_MPS**2))
-    v_next = np.minimum(v_next, ceiling_next)
-
-    v_avg = np.maximum(0.5 * (v + v_next), MIN_SPEED_MPS)
-    dt = step_m / v_avg
-
-    energy_out = np.where(coasting, 0.0, p_elec) * dt
-
-    # Harvest comes from two places: the deliberate control, and any braking the speed
-    # ceiling forces. Only the part of the deceleration produced by the brakes is
-    # recoverable — drag and rolling resistance dissipate to heat and air.
-    retarding_n = vehicle.mass_kg * (v * v - v_next * v_next) / (2.0 * step_m)
-    resistive_n = vehicle.resistive_force(v_avg, gradient_i)
-    brake_n = np.maximum(retarding_n - resistive_n, 0.0)
-    p_brake = brake_n * v_avg
-    p_recover = np.minimum(p_brake * vehicle.regen_efficiency, ERSK_MAX_POWER_W)
-    energy_in = np.where(coasting, np.minimum(p_harvest_req, ERSK_MAX_POWER_W), p_recover) * dt
-
-    return v_next, dt, energy_out, energy_in
 
 
 def _bilinear(J: np.ndarray, soc_f: np.ndarray, v_f: np.ndarray) -> np.ndarray:
@@ -308,8 +223,8 @@ def _solve_with_multiplier(
         per_control = []
         for u in controls:
             per_control.append(
-                _transition(v_grid, u, curvature[i], gradient[i],
-                            ceiling[(i + 1) % n], step_m, vehicle)
+                transition(v_grid, u, curvature[i], gradient[i],
+                           ceiling[(i + 1) % n], step_m, vehicle)
             )
         trans.append(per_control)
 
@@ -366,117 +281,6 @@ def _solve_with_multiplier(
     )
 
 
-def rollout(
-    curvature: np.ndarray,
-    gradient: np.ndarray,
-    step_m: float,
-    vehicle: VehicleModel,
-    choose,
-    ceiling: np.ndarray | None = None,
-    soc_start_j: float | None = None,
-    capacity_j: float = ES_USABLE_WINDOW_J,
-    harvest_cap_j: float = OPERATIVE_HARVEST_CAP_J,
-    rotate: bool = False,
-) -> DPResult:
-    """Run any deployment policy forward through the exact physics.
-
-    `choose(index, speed_mps, soc_j, ceiling_mps) -> control` in [-1, 1]. Both the DP's
-    own table and a learned model are evaluated through this same function, so a
-    comparison between them cannot be contaminated by differing simulation details.
-
-    Set rotate=True to start at the lap's slowest point, matching how the DP is solved.
-
-    `index` is always in the CIRCUIT'S OWN grid space, not the rotated stage order, so
-    callers can index geometry and precomputed features directly. Getting this wrong is
-    silent and severe: feeding a policy features from the wrong part of the track scored
-    -446% of the optimiser's gain when it was first tried.
-    """
-    soc_start_j = capacity_j if soc_start_j is None else soc_start_j
-    if ceiling is None:
-        ceiling = speed_ceiling(curvature, gradient, step_m, vehicle)
-    shift = int(np.argmin(ceiling)) if rotate else 0
-    if shift:
-        ceiling = np.roll(ceiling, -shift)
-        curvature = np.roll(curvature, -shift)
-        gradient = np.roll(gradient, -shift)
-
-    n = len(curvature)
-    v = float(ceiling[0])
-    soc = float(soc_start_j)
-    total_t = 0.0
-    deployed = harvested = 0.0
-
-    frac = np.zeros(n)
-    speeds = np.zeros(n)
-    socs = np.zeros(n)
-    p_dep = np.zeros(n)
-    p_har = np.zeros(n)
-    clip = np.zeros(n, dtype=bool)
-
-    for i in range(n):
-        original_i = (i + shift) % n
-        u = float(np.clip(choose(original_i, v, soc, float(ceiling[i])), -1.0, 1.0))
-
-        v_next, dt, e_out, e_in = _transition(
-            np.array([v]), u, curvature[i], gradient[i], ceiling[(i + 1) % n],
-            step_m, vehicle,
-        )
-        v_next = float(v_next[0]); dt = float(dt[0])
-        e_out = float(e_out[0]); e_in = float(e_in[0])
-
-        draw = min(soc, e_out)
-        if e_out - draw > 1.0:
-            clip[i] = True
-            # Recompute the step with only the power that was actually available. Without
-            # this the car would be credited with acceleration it could not produce.
-            available_frac = (draw / e_out) * max(u, 0.0) if e_out > 0 else 0.0
-            v_next2, dt2, e_out2, e_in2 = _transition(
-                np.array([v]), available_frac, curvature[i], gradient[i],
-                ceiling[(i + 1) % n], step_m, vehicle,
-            )
-            v_next, dt = float(v_next2[0]), float(dt2[0])
-            e_out, e_in = float(e_out2[0]), float(e_in2[0])
-            draw = min(soc, e_out)
-
-        # Harvest is bounded by SoC headroom AND the per-lap regulatory cap.
-        headroom = capacity_j - (soc - draw)
-        gained = max(min(e_in, headroom, harvest_cap_j - harvested), 0.0)
-        soc = min(max(soc - draw + gained, 0.0), capacity_j)
-
-        deployed += draw
-        harvested += gained
-        total_t += dt
-
-        frac[i] = u
-        speeds[i] = v
-        socs[i] = soc
-        p_dep[i] = draw / dt if dt > 0 else 0.0
-        p_har[i] = gained / dt if dt > 0 else 0.0
-        v = v_next
-
-    result = DPResult(
-        lap_time_s=total_t,
-        deploy_fraction=frac,
-        speed_mps=speeds,
-        soc_j=socs,
-        deploy_power_w=p_dep,
-        harvest_power_w=p_har,
-        clipping=clip,
-        energy_deployed_j=deployed,
-        energy_harvested_j=harvested,
-        soc_start_j=soc_start_j,
-        soc_end_j=soc,
-        harvest_multiplier=0.0,
-        feasible=True,
-        notes=[],
-    )
-    if shift:
-        for name in ("deploy_fraction", "speed_mps", "soc_j", "deploy_power_w",
-                     "harvest_power_w", "clipping"):
-            setattr(result, name, np.roll(getattr(result, name), shift))
-    return result
-
-
 def _rollout(
     policy, controls, trans, v_grid, soc_grid, ceiling, curvature, gradient,
     step_m, vehicle, soc_start_j, capacity_j, J, harvest_cap_j,
@@ -491,9 +295,11 @@ def _rollout(
         vi = int(round(float(np.clip((v - v_grid[0]) / d_v, 0, n_v - 1))))
         return controls[int(policy[i][si, vi])]
 
+    # The inputs are already rotated to the slowest point; do not rotate again.
     res = rollout(
         curvature, gradient, step_m, vehicle, choose, ceiling=ceiling,
         soc_start_j=soc_start_j, capacity_j=capacity_j, harvest_cap_j=harvest_cap_j,
+        rotate=False,
     )
     res.feasible = bool(np.isfinite(J).any())
     return res

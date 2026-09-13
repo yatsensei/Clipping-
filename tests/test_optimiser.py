@@ -91,6 +91,46 @@ def test_lap_time_is_finite_and_sane():
     assert 5.0 < res.lap_time_s < 600.0
 
 
+# -- one physics ---------------------------------------------------------------------
+
+
+def test_optimiser_and_baselines_share_one_physics():
+    """Replaying the DP's own controls through the baselines' path reproduces its lap.
+
+    There used to be two simulators. The optimiser was timed on one and greedy and
+    uniform on the other, so the reported gain included whatever they disagreed on.
+    Now a fixed policy through simulate_lap and the DP's rollout must agree exactly.
+    """
+    from energy.battery import BatteryState
+    from physics.simulate import simulate_lap
+
+    curvature, gradient, step = straight_and_hairpin()
+    soc0 = 0.5 * ES_USABLE_WINDOW_J
+    res = dp.solve(curvature, gradient, step, vehicle(), soc_start_j=soc0, **GRID)
+
+    replay = simulate_lap(
+        curvature, gradient, step, vehicle(), res.deploy_fraction,
+        BatteryState(soc_j=soc0),
+    )
+    assert replay.lap_time_s == pytest.approx(res.lap_time_s, abs=1e-9)
+    assert np.allclose(replay.speed_mps, res.speed_mps)
+    assert np.allclose(replay.soc_j, res.soc_j)
+    assert replay.energy_harvested_j == pytest.approx(res.energy_harvested_j)
+
+
+def test_greedy_baseline_clips_through_the_same_rollout():
+    """Greedy's clipping must cost time, as it does in the optimiser's rollout."""
+    from physics.simulate import rollout
+
+    curvature, gradient, step = straight_and_hairpin()
+    greedy = baselines.greedy(curvature, gradient, step, vehicle(),
+                              soc_start_j=0.5 * ES_USABLE_WINDOW_J)
+    direct = rollout(curvature, gradient, step, vehicle(),
+                     lambda *_: 1.0, soc_start_j=0.5 * ES_USABLE_WINDOW_J)
+    assert greedy.lap_time_s == pytest.approx(direct.lap_time_s, abs=1e-9)
+    assert greedy.clipping.any()
+
+
 # -- behaviour -----------------------------------------------------------------------
 
 
