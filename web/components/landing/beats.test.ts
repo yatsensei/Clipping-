@@ -54,6 +54,8 @@ function greedyLap(): Strategy {
     repeatability_note: "not repeatable",
     provenance: {} as Strategy["provenance"],
     data_type: "model_output",
+    driver: null,
+    inference_note: null,
   };
 }
 

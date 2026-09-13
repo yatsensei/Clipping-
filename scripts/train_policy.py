@@ -33,29 +33,16 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from config.regulations import ES_USABLE_WINDOW_J
-from config.vehicle import air_density
 from data.cache import PROCESSED_DIR
 from ml.features import FEATURE_NAMES
 from ml.policy import ClosedLoopResult, Policy, always_deploy_policy, run_closed_loop
 from optimiser import dp
-from physics.vehicle import VehicleModel
+from physics.setup import vehicle_for_circuit
 
 RESULTS_PATH = PROCESSED_DIR / "policy_evaluation.csv"
 IMPORTANCE_PATH = PROCESSED_DIR / "feature_importance.csv"
 # Evaluate closed-loop at this starting charge, matching the Phase 3 headline scenario.
 EVAL_SOC_FRACTION = 0.5
-
-
-def circuit_density(circuit_id: str, default: float) -> float:
-    path = PROCESSED_DIR / "weather_2026.parquet"
-    if not path.exists():
-        return default
-    w = pd.read_parquet(path)
-    row = w[w["circuit"] == circuit_id]
-    if row.empty or pd.isna(row.iloc[0].get("pressure_mbar")):
-        return default
-    r = row.iloc[0]
-    return air_density(r["pressure_mbar"], r["air_temp_c"], r["humidity_pct"] or 0.0)
 
 
 def build_gbm_classifier(X, y, controls):
@@ -140,9 +127,9 @@ def main() -> int:
         curvature = np.asarray(geo["curvature_1_per_m"], dtype=float)
         gradient = np.asarray(geo["gradient"], dtype=float)
         step_m = float(geo["step_m"])
-        vehicle = VehicleModel.from_fit(
-            fit, air_density=circuit_density(held_out, float(fit["air_density"]))
-        )
+        # The held-out circuit's own setup — density and grip factor — so the clone is
+        # timed on the car the DP reference lap was solved on.
+        vehicle = vehicle_for_circuit(held_out, fit).vehicle
         dp_lap = float(comparison.loc[held_out, "optimal_lap_s"])
         uni_lap = float(comparison.loc[held_out, "uniform_lap_s"])
 

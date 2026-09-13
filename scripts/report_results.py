@@ -100,19 +100,26 @@ def model_comparison_table() -> str:
 def accuracy_table() -> str:
     df = pd.read_csv(PROCESSED_DIR / "simulation_accuracy.csv").sort_values("circuit")
     lines = [
-        "| Circuit | Speed RMSE | Simulated lap | Measured lap | Error |",
-        "|---|---:|---:|---:|---:|",
+        "| Circuit | Driver | Grip factor | Lap error before it | Speed RMSE | Speed bias "
+        "| vmax error | Unexplained energy |",
+        "|---|---|---:|---:|---:|---:|---:|---:|",
     ]
+    drivers = {}
+    for path in (PROCESSED_DIR / "measured").glob("*.json"):
+        drivers[path.stem] = json.loads(path.read_text(encoding="utf-8")).get("driver", "")
     for _, r in df.iterrows():
         lines.append(
-            f"| {r['circuit']} | {r['rmse_kph']:.1f} km/h | {r['sim_lap_s']:.2f} s "
-            f"| {r['actual_lap_s']:.2f} s | {r['lap_err_s']:+.2f} s |"
+            f"| {r['circuit']} | {drivers.get(r['circuit'], '')} | {r['grip_scale']:.2f} "
+            f"| {r['unscaled_lap_err_s']:+.2f} s | {r['rmse_kph']:.1f} km/h "
+            f"| {r['bias_kph']:+.1f} km/h | {r['vmax_err_kph']:+.1f} km/h "
+            f"| {r['unexplained_mj']:.2f} MJ |"
         )
-    # The per-row errors are signed; the summary is a mean ABSOLUTE error, which would
-    # otherwise read as though the model were biased by that amount.
+    # Per-row errors are signed; the lap-error summary is a mean ABSOLUTE error.
     lines.append(
-        f"| **mean** | **{df['rmse_kph'].mean():.1f} km/h** | | | "
-        f"**{df['lap_err_s'].abs().mean():.2f} s abs** |"
+        f"| **mean** | | {df['grip_scale'].mean():.2f} "
+        f"| **{df['unscaled_lap_err_s'].abs().mean():.2f} s abs** "
+        f"| **{df['rmse_kph'].mean():.1f} km/h** | {df['bias_kph'].mean():+.1f} km/h "
+        f"| {df['vmax_err_kph'].mean():+.1f} km/h | {df['unexplained_mj'].mean():.2f} MJ |"
     )
     return "\n".join(lines)
 
@@ -120,9 +127,12 @@ def accuracy_table() -> str:
 def parameter_table() -> str:
     fit = json.loads((PROCESSED_DIR / "vehicle_fit.json").read_text(encoding="utf-8"))
     rows = [
-        ("Cd·A", f"{fit['cd_a']:.3f} m²",
+        ("Cd·A, high-drag state", f"{fit['cd_a']:.3f} m²",
          f"fitted — 95% CI [{fit['cd_a_ci'][0]:.3f}, {fit['cd_a_ci'][1]:.3f}], "
          f"{fit['coast_n']:,} straight-line coasting samples"),
+        ("Cd·A, straight-line state", f"{fit['cd_a_low']:.3f} m²",
+         f"**bound** — the most drag the car can have at terminal speed; true value in "
+         f"[{fit['cd_a_low_range'][0]:.3f}, {fit['cd_a_low_range'][1]:.3f}]"),
         ("Cl·A", f"{fit['cl_a']:.3f} m²", "fitted — lateral-acceleration envelope"),
         ("μ lateral", f"{fit['mu_lat']:.3f}", "fitted"),
         ("μ braking", f"{fit['mu_brake']:.3f}", "fitted"),
@@ -132,10 +142,15 @@ def parameter_table() -> str:
          "fitted — engine braking plus MGU-K regen"),
         ("Crr", f"{fit['crr']}", "**assumed** — not identifiable (see below)"),
         ("ICE power", f"{fit['p_ice_w'] / 1000:.0f} kW",
-         "**assumed** — published figure, not identifiable"),
+         "**assumed** — published figure; the smallest engine that closes each "
+         "measured lap's energy budget has a median of ~410 kW"),
         ("Driveline efficiency", f"{fit['driveline_efficiency']:.2f}", "**assumed**"),
         ("Regen efficiency", f"{fit['regen_efficiency']:.2f}",
          "**assumed** — no energy channels exist to measure it"),
+        ("Store-to-motor efficiency", f"{fit['discharge_efficiency']:.2f}",
+         "**assumed** — the 350 kW cap is at the MGU-K output"),
+        ("Track grip factor", "1.00–1.27",
+         "**fitted per 2026 circuit** to the measured lap time; 1.00 elsewhere"),
         ("Mass", f"{fit['mass_kg']:.0f} kg",
          "768 kg regulatory minimum + 10 kg assumed qualifying fuel"),
     ]
@@ -159,9 +174,10 @@ def build_block() -> str:
             "",
             strategy_table(),
             "",
-            "Greedy is faster on every circuit and repeatable on none of them: it ends "
-            "each lap around 2 MJ in debt, having spent energy it never repays. That is "
-            "why it is not the baseline.",
+            "Greedy is timed on the same physics as the optimiser, so its clipping "
+            "costs the time it really costs. It ends every lap in energy debt and is "
+            "not repeatable, which is why it is not the baseline; where it is faster "
+            "than uniform it is spending charge it never repays.",
             "",
             "### Learned policy — leave-one-circuit-out",
             "",
@@ -176,8 +192,13 @@ def build_block() -> str:
             "",
             "### Physics model accuracy",
             "",
-            "Forward simulation against the measured qualifying lap, on the circuits "
-            "with 2026 telemetry.",
+            "The driver's deployment is reconstructed from the measured qualifying lap "
+            "by inverse dynamics and replayed through the model, on the circuits with "
+            "2026 telemetry. One track grip factor per circuit is fitted so the "
+            "replayed lap matches the measured time — the error before that fit is "
+            "shown — and everything else is then measured, not fitted. Unexplained "
+            "energy is what the lap needed that the modelled engine plus the tapered "
+            "MGU-K could not have supplied.",
             "",
             accuracy_table(),
             "",

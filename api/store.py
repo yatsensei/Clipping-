@@ -204,6 +204,7 @@ def model_basis() -> dict:
                 "p_ice_w": fit["p_ice_w"],
                 "driveline_efficiency": fit["driveline_efficiency"],
                 "regen_efficiency": fit.get("regen_efficiency"),
+                "discharge_efficiency": fit.get("discharge_efficiency"),
                 "mass_kg": fit["mass_kg"],
             },
             "assumptions": fit.get("assumptions", []),

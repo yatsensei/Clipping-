@@ -83,7 +83,10 @@ def transition(
     gain = np.maximum(v_free * v_free - v * v, 1e-9)
     on_power = np.clip((np.minimum(v_next, v_free) ** 2 - v * v) / gain, 0.0, 1.0)
     on_power = np.where(v_free > v, on_power, 1.0)
-    energy_out = np.where(coasting, 0.0, p_elec_used * on_power) * dt
+    # Energy leaving the STORE: the motor's output plus what the inverter and motor lose.
+    energy_out = (
+        np.where(coasting, 0.0, p_elec_used * on_power) * dt / vehicle.discharge_efficiency
+    )
 
     # Harvest comes from two places: the deliberate control, and any braking the speed
     # ceiling forces. Only the part of the deceleration produced by the brakes is

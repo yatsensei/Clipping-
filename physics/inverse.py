@@ -162,7 +162,8 @@ def infer_deployment(
     p_dep = np.zeros(n)
     p_har = np.zeros(n)
     for i in range(n):
-        want = p_elec[i] * dt[i]
+        # The motor's output is what the lap needed; the store gave up a little more.
+        want = p_elec[i] * dt[i] / vehicle.discharge_efficiency
         draw = min(want, soc)
         over_store += want - draw
         headroom = capacity_j - (soc - draw)
@@ -171,7 +172,7 @@ def infer_deployment(
         deployed += draw
         harvested += gained
         socs[i] = soc
-        p_dep[i] = draw / dt[i]
+        p_dep[i] = draw * vehicle.discharge_efficiency / dt[i]   # at the motor
         p_har[i] = gained / dt[i]
 
     over_ceiling_j = float(np.sum(over_ceiling * dt))

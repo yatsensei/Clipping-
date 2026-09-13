@@ -213,7 +213,9 @@ def rollout(
         frac[i] = u
         speeds[i] = v
         socs[i] = soc
-        p_dep[i] = draw / dt if dt > 0 else 0.0
+        # Power at the MGU-K, which is what the regulations cap; the store gave up
+        # `draw`, which is what energy_deployed_j and the state of charge count.
+        p_dep[i] = draw * vehicle.discharge_efficiency / dt if dt > 0 else 0.0
         p_har[i] = gained / dt if dt > 0 else 0.0
         brake[i] = v_next < v - 1e-6
         v = v_next

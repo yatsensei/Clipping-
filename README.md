@@ -48,10 +48,16 @@ project finds it.
 
 ## Results
 
-The optimiser gains **2.35 s per lap on average** over uniform constant deployment,
-ranging from +1.54 s at Monaco to +2.77 s at Spa. Both strategies are held to the same
-constraint: the lap must end with at least the energy it started with, or it is not a
-strategy, it is a one-off.
+The optimiser gains **1.98 s per lap on average** over uniform constant deployment,
+ranging from +1.15 s at Monaco to +2.63 s at Suzuka. Both strategies are held to the
+same constraint: the lap must end with at least the energy it started with, or it is not
+a strategy, it is a one-off.
+
+An earlier version of this table reported 2.35 s. The difference is not the optimiser:
+it is that the baselines used to be timed on a second simulator that did not feed an
+empty battery back into the speed, so uniform was slower than it should have been and
+greedy faster. Everything is now timed on one physics (see below), and the gain is what
+survives that.
 
 <!-- RESULTS:START -->
 
@@ -61,101 +67,104 @@ Measured against **uniform constant deployment** at the same starting state of c
 
 | Circuit | Uniform | Optimal | **Gain** | Greedy | Greedy debt | Optimal clipping | Greedy clipping |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| spa-francorchamps | 107.710 | 104.938 | **+2.772** | 101.803 | −2.00 MJ | 0% | 61% |
-| las-vegas | 95.061 | 92.345 | **+2.716** | 89.087 | −2.00 MJ | 0% | 64% |
-| suzuka | 94.604 | 91.927 | **+2.676** | 89.635 | −2.00 MJ | 0% | 50% |
-| silverstone | 89.112 | 86.452 | **+2.660** | 84.017 | −2.00 MJ | 0% | 57% |
-| miami-gardens | 89.106 | 86.511 | **+2.596** | 84.902 | −2.00 MJ | 0% | 56% |
-| yas-marina | 90.172 | 87.599 | **+2.573** | 85.545 | −2.00 MJ | 0% | 54% |
-| shanghai | 99.774 | 97.210 | **+2.564** | 95.664 | −2.00 MJ | 0% | 50% |
-| lusail | 89.840 | 87.318 | **+2.521** | 85.299 | −2.00 MJ | 0% | 46% |
-| baku | 107.323 | 104.911 | **+2.411** | 101.924 | −2.00 MJ | 0% | 56% |
-| marina-bay | 91.739 | 89.330 | **+2.409** | 87.383 | −2.00 MJ | 0% | 47% |
-| montreal | 74.348 | 71.978 | **+2.370** | 69.696 | −2.00 MJ | 0% | 58% |
-| monza | 83.198 | 80.846 | **+2.352** | 76.884 | −2.00 MJ | 0% | 62% |
-| spielberg | 68.741 | 66.399 | **+2.342** | 64.369 | −2.00 MJ | 0% | 47% |
-| austin | 97.539 | 95.235 | **+2.304** | 93.512 | −2.00 MJ | 0% | 47% |
-| melbourne | 83.440 | 81.147 | **+2.293** | 78.197 | −2.00 MJ | 0% | 55% |
-| sao-paulo | 71.430 | 69.274 | **+2.156** | 67.638 | −2.00 MJ | 0% | 47% |
-| mexico-city | 75.092 | 72.979 | **+2.113** | 71.708 | −2.00 MJ | 0% | 38% |
-| barcelona | 76.757 | 74.755 | **+2.001** | 73.079 | −2.00 MJ | 0% | 43% |
-| zandvoort | 77.253 | 75.286 | **+1.967** | 74.010 | −2.00 MJ | 0% | 45% |
-| budapest | 77.338 | 75.433 | **+1.905** | 74.389 | −2.00 MJ | 0% | 38% |
-| monte-carlo | 73.646 | 72.111 | **+1.536** | 71.835 | −2.00 MJ | 0% | 33% |
-| **mean** | | | **+2.345** | | −2.00 MJ | 0% | 50% |
+| suzuka | 87.959 | 85.324 | **+2.634** | 86.421 | −1.37 MJ | 0% | 62% |
+| silverstone | 88.648 | 86.181 | **+2.467** | 87.160 | −1.09 MJ | 0% | 59% |
+| spa-francorchamps | 105.395 | 102.945 | **+2.450** | 104.271 | −1.24 MJ | 0% | 62% |
+| shanghai | 92.726 | 90.326 | **+2.400** | 91.206 | −1.20 MJ | 0% | 53% |
+| las-vegas | 94.583 | 92.202 | **+2.381** | 93.274 | −0.90 MJ | 0% | 66% |
+| monza | 82.857 | 80.694 | **+2.163** | 81.255 | −1.18 MJ | 0% | 71% |
+| montreal | 73.601 | 71.483 | **+2.117** | 71.632 | −1.26 MJ | 0% | 55% |
+| yas-marina | 89.671 | 87.563 | **+2.108** | 88.085 | −1.17 MJ | 0% | 48% |
+| spielberg | 67.816 | 65.722 | **+2.093** | 66.203 | −1.27 MJ | 0% | 54% |
+| miami-gardens | 87.673 | 85.615 | **+2.059** | 86.622 | −0.71 MJ | 0% | 51% |
+| lusail | 89.335 | 87.288 | **+2.047** | 88.197 | −1.37 MJ | 0% | 48% |
+| baku | 106.715 | 104.810 | **+1.905** | 105.222 | −1.47 MJ | 0% | 52% |
+| melbourne | 79.377 | 77.482 | **+1.895** | 77.859 | −1.44 MJ | 0% | 65% |
+| austin | 97.024 | 95.169 | **+1.855** | 95.391 | −1.27 MJ | 0% | 43% |
+| marina-bay | 91.219 | 89.383 | **+1.837** | 89.848 | −1.19 MJ | 0% | 41% |
+| sao-paulo | 71.107 | 69.349 | **+1.757** | 70.007 | −1.16 MJ | 0% | 52% |
+| mexico-city | 74.611 | 72.921 | **+1.689** | 73.109 | −1.31 MJ | 0% | 44% |
+| barcelona | 74.057 | 72.455 | **+1.602** | 73.086 | −1.35 MJ | 0% | 53% |
+| zandvoort | 76.805 | 75.320 | **+1.486** | 75.663 | −1.30 MJ | 0% | 41% |
+| budapest | 76.917 | 75.488 | **+1.429** | 75.929 | −1.22 MJ | 0% | 36% |
+| monte-carlo | 68.736 | 67.581 | **+1.154** | 67.868 | −1.02 MJ | 0% | 22% |
+| **mean** | | | **+1.978** | | −1.21 MJ | 0% | 51% |
 
-Greedy is faster on every circuit and repeatable on none of them: it ends each lap around 2 MJ in debt, having spent energy it never repays. That is why it is not the baseline.
+Greedy is timed on the same physics as the optimiser, so its clipping costs the time it really costs. It ends every lap in energy debt and is not repeatable, which is why it is not the baseline; where it is faster than uniform it is spending charge it never repays.
 
 ### Learned policy — leave-one-circuit-out
 
 | Held-out circuit | DP gain | Model gain | Retained | Repeatable |
 |---|---:|---:|---:|:--:|
-| baku | +2.411 s | +3.196 s | 133% | **no** |
-| spa-francorchamps | +2.772 s | +3.056 s | 110% | **no** |
-| spielberg | +2.342 s | +2.561 s | 109% | **no** |
-| montreal | +2.370 s | +2.548 s | 108% | **no** |
-| melbourne | +2.293 s | +2.319 s | 101% | **no** |
-| silverstone | +2.660 s | +2.671 s | 100% | **no** |
-| monza | +2.352 s | +2.275 s | 97% | **no** |
-| yas-marina | +2.573 s | +2.361 s | 92% | yes |
-| suzuka | +2.676 s | +2.390 s | 89% | yes |
-| sao-paulo | +2.156 s | +1.879 s | 87% | **no** |
-| miami-gardens | +2.596 s | +2.251 s | 87% | **no** |
-| mexico-city | +2.113 s | +1.820 s | 86% | yes |
-| barcelona | +2.001 s | +1.668 s | 83% | yes |
-| marina-bay | +2.409 s | +1.922 s | 80% | **no** |
-| austin | +2.304 s | +1.821 s | 79% | yes |
-| las-vegas | +2.716 s | +1.973 s | 73% | **no** |
-| zandvoort | +1.967 s | +1.387 s | 71% | yes |
-| shanghai | +2.564 s | +1.704 s | 66% | yes |
-| lusail | +2.521 s | +1.633 s | 65% | yes |
-| monte-carlo | +1.536 s | +0.447 s | 29% | yes |
-| budapest | +1.905 s | +0.449 s | 24% | yes |
+| baku | +1.905 s | +2.436 s | 128% | **no** |
+| spielberg | +2.093 s | +2.477 s | 118% | **no** |
+| spa-francorchamps | +2.450 s | +2.755 s | 112% | **no** |
+| sao-paulo | +1.757 s | +1.816 s | 103% | **no** |
+| melbourne | +1.895 s | +1.892 s | 100% | **no** |
+| monza | +2.163 s | +2.154 s | 100% | **no** |
+| silverstone | +2.467 s | +2.426 s | 98% | **no** |
+| suzuka | +2.634 s | +2.526 s | 96% | **no** |
+| montreal | +2.117 s | +1.897 s | 90% | yes |
+| miami-gardens | +2.059 s | +1.765 s | 86% | **no** |
+| shanghai | +2.400 s | +2.055 s | 86% | yes |
+| barcelona | +1.602 s | +1.347 s | 84% | yes |
+| mexico-city | +1.689 s | +1.313 s | 78% | yes |
+| las-vegas | +2.381 s | +1.776 s | 75% | **no** |
+| zandvoort | +1.486 s | +0.933 s | 63% | yes |
+| austin | +1.855 s | +1.124 s | 61% | yes |
+| yas-marina | +2.108 s | +1.246 s | 59% | yes |
+| marina-bay | +1.837 s | +1.032 s | 56% | yes |
+| lusail | +2.047 s | +1.119 s | 55% | yes |
+| monte-carlo | +1.154 s | +0.050 s | 4% | yes |
+| budapest | +1.429 s | -0.093 s | -6% | yes |
 
-Mean across all 21 folds: **84%**. On the 10 folds that produced a repeatable lap: **68%** (median 75%, best 92%).
+Mean across all 21 folds: **78%**. On the 11 folds that produced a repeatable lap: **57%** (median 61%, best 90%).
 
 Scores above 100% are not the model beating the optimiser. The DP is optimal subject to periodicity, and the only way past it is to break that constraint — every fold above 100% ends the lap with less charge than it started.
 
 | Model | All folds | Repeatable laps only | Repeatable | Mean MAE |
 |---|---:|---:|---:|---:|
-| `gbm` | 84% | 68% | 10/21 | 0.14 |
-| `gbm_reg` | 67% | 41% | 5/21 | 0.20 |
-| `linear` | -72% | -148% | 3/21 | 0.33 |
-| `always-deploy` | -73% | — | 0/21 | 0.93 |
+| `gbm` | 78% | 57% | 11/21 | 0.14 |
+| `gbm_reg` | 60% | 26% | 7/21 | 0.20 |
+| `linear` | -74% | -128% | 8/21 | 0.33 |
+| `always-deploy` | 70% | — | 0/21 | 0.95 |
 
 ### Physics model accuracy
 
-Forward simulation against the measured qualifying lap, on the circuits with 2026 telemetry.
+The driver's deployment is reconstructed from the measured qualifying lap by inverse dynamics and replayed through the model, on the circuits with 2026 telemetry. One track grip factor per circuit is fitted so the replayed lap matches the measured time — the error before that fit is shown — and everything else is then measured, not fitted. Unexplained energy is what the lap needed that the modelled engine plus the tapered MGU-K could not have supplied.
 
-| Circuit | Speed RMSE | Simulated lap | Measured lap | Error |
-|---|---:|---:|---:|---:|
-| barcelona | 21.9 km/h | 73.08 s | 74.68 s | -1.60 s |
-| budapest | 16.1 km/h | 74.39 s | 77.22 s | -2.83 s |
-| melbourne | 26.6 km/h | 78.20 s | 78.52 s | -0.32 s |
-| miami-gardens | 22.8 km/h | 84.90 s | 87.80 s | -2.90 s |
-| monte-carlo | 29.4 km/h | 71.84 s | 72.09 s | -0.26 s |
-| montreal | 22.4 km/h | 69.70 s | 72.65 s | -2.95 s |
-| shanghai | 24.7 km/h | 95.66 s | 92.06 s | +3.60 s |
-| silverstone | 25.6 km/h | 84.02 s | 88.39 s | -4.37 s |
-| spa-francorchamps | 29.9 km/h | 101.80 s | 104.89 s | -3.09 s |
-| spielberg | 24.4 km/h | 64.37 s | 66.41 s | -2.04 s |
-| suzuka | 30.5 km/h | 89.64 s | 89.08 s | +0.56 s |
-| **mean** | **24.9 km/h** | | | **2.23 s abs** |
+| Circuit | Driver | Grip factor | Lap error before it | Speed RMSE | Speed bias | vmax error | Unexplained energy |
+|---|---|---:|---:|---:|---:|---:|---:|
+| barcelona | RUS | 1.09 | +2.55 s | 14.6 km/h | -1.4 km/h | -6.3 km/h | 0.22 MJ |
+| budapest | HAM | 1.00 | -0.06 s | 8.1 km/h | -0.8 km/h | -3.0 km/h | 0.07 MJ |
+| melbourne | RUS | 1.17 | +4.37 s | 15.8 km/h | +0.9 km/h | -0.8 km/h | 0.04 MJ |
+| miami-gardens | ANT | 1.04 | +0.93 s | 13.0 km/h | -0.4 km/h | -3.9 km/h | 0.81 MJ |
+| monte-carlo | VER | 1.19 | +5.10 s | 19.7 km/h | -2.6 km/h | +4.0 km/h | 0.00 MJ |
+| montreal | ANT | 1.03 | +0.53 s | 8.8 km/h | +0.7 km/h | -1.7 km/h | 0.11 MJ |
+| shanghai | ANT | 1.27 | +6.67 s | 22.8 km/h | +2.5 km/h | -0.8 km/h | 0.36 MJ |
+| silverstone | ANT | 1.01 | +0.25 s | 11.8 km/h | -0.4 km/h | +0.6 km/h | 0.00 MJ |
+| spa-francorchamps | LEC | 1.06 | +2.15 s | 19.5 km/h | -0.1 km/h | -4.5 km/h | 0.30 MJ |
+| spielberg | ANT | 1.04 | +0.73 s | 19.0 km/h | -0.1 km/h | -1.6 km/h | 0.05 MJ |
+| suzuka | RUS | 1.23 | +12.39 s | 22.3 km/h | -0.7 km/h | -1.5 km/h | 0.20 MJ |
+| **mean** | | 1.10 | **3.25 s abs** | **15.9 km/h** | -0.2 km/h | -1.8 km/h | 0.20 MJ |
 
 ### Fitted vehicle parameters
 
 | Parameter | Value | Basis |
 |---|---:|---|
-| Cd·A | 0.968 m² | fitted — 95% CI [0.954, 0.981], 29,275 straight-line coasting samples |
+| Cd·A, high-drag state | 0.968 m² | fitted — 95% CI [0.954, 0.981], 29,275 straight-line coasting samples |
+| Cd·A, straight-line state | 0.906 m² | **bound** — the most drag the car can have at terminal speed; true value in [0.761, 0.906] |
 | Cl·A | 5.586 m² | fitted — lateral-acceleration envelope |
 | μ lateral | 1.753 | fitted |
 | μ braking | 1.386 | fitted |
 | Lateral ceiling | 44.4 m/s² | fitted — tyre saturation, 4.5 g |
 | Off-throttle force | 1197 N | fitted — engine braking plus MGU-K regen |
 | Crr | 0.012 | **assumed** — not identifiable (see below) |
-| ICE power | 400 kW | **assumed** — published figure, not identifiable |
+| ICE power | 400 kW | **assumed** — published figure; the smallest engine that closes each measured lap's energy budget has a median of ~410 kW |
 | Driveline efficiency | 0.95 | **assumed** |
 | Regen efficiency | 0.90 | **assumed** — no energy channels exist to measure it |
+| Store-to-motor efficiency | 0.95 | **assumed** — the 350 kW cap is at the MGU-K output |
+| Track grip factor | 1.00–1.27 | **fitted per 2026 circuit** to the measured lap time; 1.00 elsewhere |
 | Mass | 778 kg | 768 kg regulatory minimum + 10 kg assumed qualifying fuel |
 
 <!-- RESULTS:END -->
@@ -197,13 +206,26 @@ found nothing.
 | Track geometry, curvature, corner positions | **Measured.** GPS from clean qualifying laps, pooled across 64–281 laps per circuit |
 | Speed, throttle, brake traces | **Measured.** FastF1, ~4 Hz |
 | Air density | **Measured.** Computed per circuit from session weather |
-| Cd·A, Cl·A, grip coefficients, off-throttle force | **Fitted** to measured telemetry |
-| ICE power, driveline and regen efficiency, Crr | **Assumed.** Not identifiable — see below |
+| Cd·A (high-drag state), Cl·A, grip coefficients, off-throttle force | **Fitted** to measured telemetry |
+| Cd·A (straight-line state) | **Bounded** from terminal-speed running; the bound is used |
+| Track grip factor | **Fitted per 2026 circuit** to the measured lap time |
+| ICE power, driveline, regen and store efficiencies, Crr | **Assumed.** Not identifiable — see below |
+| The driver's deployment ("measured" mode) | **Inferred** from the measured speed by inverse dynamics under the model |
 | Deployment, state of charge, harvest, clipping | **Model output.** Nothing here is measured |
 | Lap times and gains | **Model output** |
 
 Every API response carries a `data_type` field marking which of these it is, and the
 interface renders that distinction rather than hiding it.
+
+### The driver's own lap
+
+The force balance runs both ways. Given the measured speed along a lap, the electrical
+power the observed acceleration required beyond the engine is what the driver deployed,
+and the recoverable share of the observed braking is what was harvested. That
+reconstruction is served as a fourth strategy, **measured**, on every circuit with a
+2026 session, and it is also how the physics is validated: replay it through the model
+and compare the speed trace with the real one. It is inferred, not measured — it
+inherits the model's engine — and it is labelled that way everywhere it appears.
 
 ## What could not be fitted, and why
 
@@ -215,7 +237,32 @@ every speed bin would imply the same ICE power. Instead the implied value runs f
 to 457 kW, because observed total power stays flat near 460 kW while the electrical
 ceiling falls from 350 kW to 150 kW. The cars are deploying well below the ceiling at
 mid-speed — which is the energy management this project exists to model, and cannot also
-be assumed away in order to fit the power split. Published figures are used and labelled.
+be assumed away in order to fit the power split. The cars also never run above the
+taper's zero point (one sample in 2.4 million), so there is no window where the engine
+is alone. Published figures are used and labelled. What the data does give is a floor:
+the smallest engine at which each measured lap's energy budget closes has a median of
+about 410 kW across the eleven circuits, which is the first evidence behind the
+published 400 kW. It also gives a tension the model does not resolve — under that engine
+every reference lap ends with 2–3.5 MJ unused, which no qualifying lap does. The power
+peaks say the engine cannot be weaker; the lap budgets say its average is. A torque
+curve would reconcile them, and the public data does not carry one.
+
+**The straight-line drag state.** The 2026 car has active aero, and the switch is not in
+the public data. Its effect is: at 340–350 km/h the cars sit at terminal speed, and even
+deploying every watt the taper allows, the drag area can be at most 0.906 m² — the
+0.968 m² fitted on coasting is impossible there. Lifting the throttle leaves the low-drag
+state, so a coast-down fit measures the other car. The model carries both: the coast
+value off throttle and in corners, and the terminal-speed bound under power on a
+straight. The true straight-line value lies between 0.76 and 0.91 m²; the bound is the
+least drag reduction the data forces.
+
+**Track grip.** A single grip envelope fitted across every session is right on average
+and wrong by up to 25% at individual circuits — surface, compound, temperature, and the
+quality of the GPS geometry all differ, and a point-mass model on a pooled racing line
+sees none of it. One grip factor per 2026 circuit is fitted so the replayed reference
+lap matches its measured time (1.00 at Budapest to 1.27 at Shanghai; the outliers are
+the circuits with known geometry problems). That is one number fitted to one number; the
+shape of the speed trace is left free and is what the accuracy table measures.
 
 **Rolling resistance.** Rolling resistance, engine braking and off-throttle MGU-K regen
 are all approximately constant forces. Nothing in their speed dependence separates them,
@@ -259,10 +306,18 @@ A longitudinal point-mass model with a friction ellipse:
 
 ```
 F_traction = min(η·P_available / v, tyre limit)
-F_drag     = ½ · ρ · Cd·A · v²
+F_drag     = ½ · ρ · Cd·A · v²        two Cd·A states: straight-line under power, high-drag otherwise
 F_roll     = Crr · m · g
 m · dv/dt  = F_traction − F_drag − F_roll − F_gradient
 ```
+
+One transition function integrates this for everything: the optimiser, the baselines,
+the validation and the learned-policy scorer (`physics/step.py`). There used to be two,
+and they disagreed on clipping — the baseline simulator fixed the speed from the
+*requested* deployment and only afterwards noticed the store was empty, which is why
+greedy once looked faster than the optimum. Electrical energy is billed ICE-first, so a
+traction-limited corner exit is not charged for power the wheels could not use, and
+nothing is billed on the braking share of a step.
 
 Aerodynamic and grip coefficients are fitted by regression against real telemetry. The
 fits only work because samples are filtered to **straight-line running** using curvature
@@ -344,8 +399,9 @@ Contrary to expectation, headroom-to-taper is *not* a dominant feature — it ra
   telemetry in any year, so neither is included. Ten further circuits had not yet run in
   2026 when this was built and take **geometry only** from an earlier season at the same
   venue; their speed traces are never used and the physics is 2026-spec throughout.
-- **Quasi-steady-state.** No transient tyre or aero behaviour. Monaco's simulated top
-  speed is 318 km/h against a measured 286, though its lap time matches to 0.26 s.
+- **Quasi-steady-state.** No transient tyre or aero behaviour, and the active-aero
+  state is inferred from its effect rather than observed. Monaco's tunnel has no GPS,
+  so its geometry there is wrong and the model is 11 km/h slow through it.
 
 ## Stack
 
@@ -408,6 +464,7 @@ To rebuild the pipeline end to end:
 ```bash
 uv run python -m scripts.build_circuits      # geometry        (~15 min)
 uv run python -m scripts.fit_vehicle         # vehicle fit
+uv run python -m scripts.simulate_reference  # validation, grip factors, the drivers' laps
 uv run python -m scripts.run_optimiser       # DP, all circuits (~25 min)
 uv run python -m scripts.build_training_data # DP training set  (~20 min)
 uv run python -m scripts.train_policy        # leave-one-circuit-out
@@ -451,9 +508,11 @@ tests/        Physics unit tests and optimiser constraint checks
 
 ## Roadmap
 
-- Manual Override Mode and the 0.5 MJ overtaking allocation
-- Active aero drag state as a joint optimisation variable
-- Race-length energy management across a full stint
+- An engine torque curve, to reconcile the power peaks with the lap energy budgets
+- Active aero as a decision variable rather than a state inferred from its effect
+- Race-length energy management across a full stint, with Manual Override Mode and
+  the 0.5 MJ overtaking allocation — a race feature, so not offered as a qualifying
+  strategy here
 - A reinforcement learning policy benchmarked against the DP baseline
 - DAgger or a periodicity-aware loss, to close the gap the cloned policy leaves
 

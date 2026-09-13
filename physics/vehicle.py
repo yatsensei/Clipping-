@@ -41,6 +41,10 @@ class VehicleModel:
     mu_lat: float                  # lateral friction coefficient [-]
     mu_brake: float                # longitudinal braking friction coefficient [-]
     regen_efficiency: float        # braking energy recovered at the CU-K bus [-]
+    # Store-to-motor losses. The regulations cap the MGU-K's OUTPUT at 350 kW, so the
+    # energy leaving the store per joule at the motor is 1/eta. Inverter and motor
+    # losses in this class of machine are a few percent; assumed, not measurable here.
+    discharge_efficiency: float = 0.95
     # Constant retarding force present only when off throttle: engine braking plus MGU-K
     # regen at roughly constant torque. Measured on coasting, where it is ~13x rolling
     # resistance. Applying it while under power would be wrong, so it is kept separate
@@ -102,6 +106,7 @@ class VehicleModel:
             mu_lat=float(fit["mu_lat"]),
             mu_brake=float(fit["mu_brake"]),
             regen_efficiency=float(fit.get("regen_efficiency", 0.9)),
+            discharge_efficiency=float(fit.get("discharge_efficiency", 0.95)),
             f_offthrottle_n=float(fit.get("f_offthrottle_n", 0.0)),
             a_lat_ceiling=float(fit.get("a_lat_ceiling", 50.0)),
             cd_a_low=(

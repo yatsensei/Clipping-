@@ -7,9 +7,12 @@ Runs three strategies on identical physics and reports lap times, energy and cli
   optimal  the DP solution, periodic by construction
 
 THE HEADLINE GAIN IS MEASURED AGAINST UNIFORM, because uniform is the only baseline that
-is also repeatable. Greedy usually posts a faster single lap, and that is not a fair
-comparison: it ends the lap with an empty store, so it is spending energy it never
-repays. That is reported explicitly rather than hidden.
+is also repeatable. Greedy ends the lap with an empty store — it is spending energy it
+never repays — so its lap time is not comparable, whichever side of uniform it lands.
+That is reported explicitly rather than hidden.
+
+Every circuit is simulated on its own setup: the session's air density and, where a
+2026 lap exists, the track grip factor fitted by scripts.simulate_reference.
 
 Starting state of charge defaults to half the usable window, not full. A full store
 cannot accept braking energy, so a lap that starts full and must end full has almost no
@@ -32,37 +35,12 @@ from config.regulations import (
     OPERATIVE_HARVEST_CAP_BASIS,
     OPERATIVE_HARVEST_CAP_J,
 )
-from config.vehicle import air_density
 from data.cache import PROCESSED_DIR
 from optimiser import baselines, dp
-from physics.vehicle import VehicleModel
+from physics.setup import vehicle_for_circuit
 
 OUT_DIR = PROCESSED_DIR / "strategies"
 DEFAULT_SOC_FRACTION = 0.5
-
-
-def circuit_density(circuit_id: str, default: float) -> tuple[float, bool]:
-    path = PROCESSED_DIR / "weather_2026.parquet"
-    if not path.exists():
-        return default, False
-    w = pd.read_parquet(path)
-    row = w[w["circuit"] == circuit_id]
-    if row.empty or pd.isna(row.iloc[0].get("pressure_mbar")):
-        return default, False
-    r = row.iloc[0]
-    return air_density(r["pressure_mbar"], r["air_temp_c"], r["humidity_pct"] or 0.0), True
-
-
-def grip_factor(circuit_id: str) -> tuple[float, bool]:
-    """The circuit's fitted track grip factor, or 1.0 where no 2026 lap exists to fit."""
-    path = PROCESSED_DIR / "grip_factors.json"
-    if not path.exists():
-        return 1.0, False
-    table = json.loads(path.read_text(encoding="utf-8"))
-    entry = table.get(circuit_id)
-    if not entry:
-        return 1.0, False
-    return float(entry["grip_scale"]), True
 
 
 def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | None:
@@ -71,9 +49,10 @@ def run_circuit(circuit_id: str, fit: dict, soc_start_j: float, args) -> dict | 
         return None
     geo = json.loads(path.read_text(encoding="utf-8"))
 
-    rho, measured = circuit_density(circuit_id, float(fit["air_density"]))
-    grip, grip_fitted = grip_factor(circuit_id)
-    vehicle = VehicleModel.from_fit(fit, air_density=rho, grip_scale=grip)
+    setup = vehicle_for_circuit(circuit_id, fit)
+    vehicle = setup.vehicle
+    rho, measured = setup.air_density, setup.air_density_measured
+    grip, grip_fitted = setup.grip_scale, setup.grip_scale_fitted
 
     curvature = np.asarray(geo["curvature_1_per_m"], dtype=float)
     gradient = np.asarray(geo["gradient"], dtype=float)

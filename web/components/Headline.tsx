@@ -8,8 +8,12 @@ import { formatLap } from "@/lib/track";
  *
  * The gain is never rendered without naming what it is measured against — a gain with no
  * stated baseline is meaningless, and the API sends the statement precisely so it cannot
- * be dropped here. Greedy's lap time is always accompanied by its energy debt, because on
- * every circuit it is the fastest single lap and the slowest thing to actually run twice.
+ * be dropped here. Greedy's lap time is always accompanied by its energy debt: it ends
+ * every lap short, so its time is not comparable with the energy-neutral strategies.
+ *
+ * The driver's own lap, where one exists, is shown in its own card and never as a row
+ * of the strategy table: it starts from a full store and is not required to end
+ * energy-neutral, so a lap-time comparison with the optimiser would be false.
  */
 export function Headline({
   comparison,
@@ -97,6 +101,42 @@ export function Headline({
           {comparison.greedy_caveat}
         </p>
       </div>
+
+      {comparison.measured && (
+        <div className="rounded-lg border border-harvest/40 bg-panel p-3">
+          <div className="flex items-baseline justify-between">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
+              The driver&apos;s lap
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-harvest">
+              {comparison.measured.driver} · inferred
+            </div>
+          </div>
+          <div className="tabular mt-1 text-lg text-ink">
+            {formatLap(comparison.measured.lap_time_s)}
+            <span className="ml-1 text-xs text-muted">s, from a full store</span>
+          </div>
+          <dl className="tabular mt-2 grid grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <dt className="text-muted">Deployed</dt>
+              <dd className="text-ink">{comparison.measured.energy_deployed_mj.toFixed(2)} MJ</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Harvested</dt>
+              <dd className="text-ink">{comparison.measured.energy_harvested_mj.toFixed(2)} MJ</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Left at the line</dt>
+              <dd className="text-ink">{comparison.measured.soc_end_mj.toFixed(2)} MJ</dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-[11px] leading-snug text-muted">
+            Reconstructed from the measured speed under the fitted model, so it inherits
+            the model&apos;s engine. Not comparable with the strategies above: they start
+            at half charge and must end energy-neutral.
+          </p>
+        </div>
+      )}
 
       {comparison.learned_policy && (
         <div className="rounded-lg border border-line bg-panel p-3">

@@ -23,26 +23,13 @@ import numpy as np
 import pandas as pd
 
 from config.regulations import ES_USABLE_WINDOW_J, OPERATIVE_HARVEST_CAP_J
-from config.vehicle import air_density
 from data.cache import PROCESSED_DIR
 from ml.features import DYNAMIC_FEATURES, FEATURE_NAMES, build_static, dynamic_row
 from optimiser import dp
-from physics.vehicle import VehicleModel
+from physics.setup import vehicle_for_circuit
 
 OUT_PATH = PROCESSED_DIR / "training_data.parquet"
 META_PATH = PROCESSED_DIR / "training_meta.json"
-
-
-def circuit_density(circuit_id: str, default: float) -> float:
-    path = PROCESSED_DIR / "weather_2026.parquet"
-    if not path.exists():
-        return default
-    w = pd.read_parquet(path)
-    row = w[w["circuit"] == circuit_id]
-    if row.empty or pd.isna(row.iloc[0].get("pressure_mbar")):
-        return default
-    r = row.iloc[0]
-    return air_density(r["pressure_mbar"], r["air_temp_c"], r["humidity_pct"] or 0.0)
 
 
 def solve_circuit(circuit_id: str, fit: dict, soc_levels: np.ndarray, args):
@@ -51,9 +38,8 @@ def solve_circuit(circuit_id: str, fit: dict, soc_levels: np.ndarray, args):
         return None
     geo = json.loads(geo_path.read_text(encoding="utf-8"))
 
-    vehicle = VehicleModel.from_fit(
-        fit, air_density=circuit_density(circuit_id, float(fit["air_density"]))
-    )
+    # Air density AND the track grip factor: the reference solutions used both.
+    vehicle = vehicle_for_circuit(circuit_id, fit).vehicle
     curvature = np.asarray(geo["curvature_1_per_m"], dtype=float)
     gradient = np.asarray(geo["gradient"], dtype=float)
     step_m = float(geo["step_m"])

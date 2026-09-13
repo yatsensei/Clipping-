@@ -30,6 +30,8 @@ function strategy(speedKph: number[], lapTimeS?: number): Strategy {
     repeatability_note: null,
     provenance: {} as Strategy["provenance"],
     data_type: "model_output",
+    driver: null,
+    inference_note: null,
   };
 }
 

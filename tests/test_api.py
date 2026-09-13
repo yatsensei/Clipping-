@@ -177,6 +177,73 @@ def test_strategy_marks_greedy_as_not_repeatable(circuit_id):
     assert g["repeatability_note"] and "cannot be repeated" in g["repeatability_note"]
 
 
+# -- the driver's lap ----------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def native_circuit_id() -> str:
+    """A circuit with a 2026 session, and therefore a reconstructed driver lap."""
+    circuits = client.get("/circuits").json()
+    native = [c for c in circuits if c["has_strategy"] and not c["is_fallback"]]
+    if not native:
+        pytest.skip("no 2026-native circuit solved")
+    return native[0]["circuit_id"]
+
+
+@pytest.fixture(scope="module")
+def fallback_circuit_id() -> str:
+    circuits = client.get("/circuits").json()
+    fallback = [c for c in circuits if c["has_strategy"] and c["is_fallback"]]
+    if not fallback:
+        pytest.skip("no fallback circuit solved")
+    return fallback[0]["circuit_id"]
+
+
+def test_measured_mode_is_labelled_inferred_and_names_the_driver(native_circuit_id):
+    m = client.get(f"/circuits/{native_circuit_id}/strategy",
+                   params={"mode": "measured"}).json()
+    assert m["mode"] == "measured"
+    assert m["data_type"] == "inferred_from_telemetry"
+    assert m["driver"]
+    assert m["inference_note"] and "not a measurement" in m["inference_note"].lower()
+    # A qualifying lap starts full, and says so rather than borrowing the strategies' start.
+    assert m["soc_start_mj"] == pytest.approx(4.0)
+    assert m["repeatability_note"] and "not comparable" in m["repeatability_note"]
+    assert not any(m["clipping"]), "an inferred lap has no clipping: it happened"
+
+
+def test_measured_mode_shares_the_distance_index(native_circuit_id):
+    g = client.get(f"/circuits/{native_circuit_id}/geometry").json()
+    m = client.get(f"/circuits/{native_circuit_id}/strategy",
+                   params={"mode": "measured"}).json()
+    assert len(m["speed_kph"]) == len(g["distance_m"])
+
+
+def test_comparison_carries_the_drivers_lap_where_it_exists(native_circuit_id):
+    c = client.get(f"/circuits/{native_circuit_id}/comparison").json()
+    d = c["measured"]
+    assert d is not None
+    assert d["energy_deployed_mj"] > 0 and d["energy_harvested_mj"] > 0
+    assert 0.8 < d["grip_scale"] < 1.5
+    # The driver's lap is never a row of the strategy table: it is not comparable.
+    assert all(s["mode"] != "measured" for s in c["strategies"])
+
+
+def test_fallback_circuits_have_no_drivers_lap(fallback_circuit_id):
+    r = client.get(f"/circuits/{fallback_circuit_id}/strategy",
+                   params={"mode": "measured"})
+    assert r.status_code == 404
+    c = client.get(f"/circuits/{fallback_circuit_id}/comparison").json()
+    assert c["measured"] is None
+
+
+def test_greedy_is_slower_than_optimal_on_shared_physics(circuit_id):
+    """The old baseline simulator credited greedy with acceleration from an empty store."""
+    c = client.get(f"/circuits/{circuit_id}/comparison").json()
+    times = {s["mode"]: s["lap_time_s"] for s in c["strategies"]}
+    assert times["greedy"] > times["optimal"]
+
+
 # -- meta ----------------------------------------------------------------------------
 
 
@@ -195,8 +262,12 @@ def test_meta_reports_how_far_the_model_sits_from_reality():
     acc = m["simulation_accuracy"]
     if acc is None:
         pytest.skip("simulation accuracy not computed")
-    assert acc["mean_abs_lap_error_s"] > 0
     assert acc["circuits"] > 0
+    assert acc["mean_speed_rmse_kph"] > 0
+    # The lap time is fitted per circuit through the grip factor; the error BEFORE that
+    # fit is what must be reported alongside it.
+    assert acc["mean_abs_lap_error_before_grip_fit_s"] > acc["mean_abs_lap_error_s"]
+    assert m["vehicle"]["fitted"]["cd_a_straight_m2"] < m["vehicle"]["fitted"]["cd_a_m2"]
 
 
 def test_store_rejects_an_unknown_mode_directly():

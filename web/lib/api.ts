@@ -26,7 +26,9 @@ const LIVE_BASE = process.env.NEXT_PUBLIC_API_BASE;
 export const STATIC_MODE = !LIVE_BASE;
 export const API_BASE = LIVE_BASE ?? "/api";
 
-export type StrategyMode = "optimal" | "uniform" | "greedy";
+// "measured" is the driver's own lap, reconstructed by inverse dynamics; it exists
+// only for circuits with a 2026 session.
+export type StrategyMode = "optimal" | "uniform" | "greedy" | "measured";
 
 /** The brief's "naive" is this codebase's "uniform"; snapshots use canonical names. */
 export function canonicalMode(mode: string): StrategyMode {
@@ -125,7 +127,22 @@ export interface Strategy {
   repeatable: boolean;
   repeatability_note: string | null;
   provenance: Provenance;
-  data_type: "model_output";
+  data_type: "model_output" | "inferred_from_telemetry";
+  /** Measured mode only. */
+  driver: string | null;
+  inference_note: string | null;
+}
+
+export interface MeasuredSummary {
+  driver: string;
+  lap_time_s: number;
+  energy_deployed_mj: number;
+  energy_harvested_mj: number;
+  soc_start_mj: number;
+  soc_end_mj: number;
+  unexplained_mj: number;
+  grip_scale: number;
+  note: string;
 }
 
 export interface StrategySummary {
@@ -155,6 +172,8 @@ export interface Comparison {
   gain_vs_greedy_s: number;
   greedy_energy_debt_mj: number;
   greedy_caveat: string;
+  /** The driver's reconstructed lap, where a 2026 session exists. */
+  measured: MeasuredSummary | null;
   strategies: StrategySummary[];
   learned_policy: LearnedPolicyScore | null;
   provenance: Provenance;
@@ -223,10 +242,13 @@ export const MODE_LABEL: Record<StrategyMode, string> = {
   optimal: "Optimal",
   uniform: "Uniform",
   greedy: "Greedy",
+  measured: "Driver",
 };
 
 export const MODE_DESCRIPTION: Record<StrategyMode, string> = {
   optimal: "Dynamic programming solution, energy-neutral over the lap",
   uniform: "Constant deployment, chosen so the lap is energy-neutral",
-  greedy: "Deploy everything available — empties the store and cannot be repeated",
+  greedy: "Deploy everything available — empties the store early and clips for most of the lap",
+  measured:
+    "The reference qualifying lap, with its deployment reconstructed from the measured speed by inverse dynamics — inferred, not measured",
 };

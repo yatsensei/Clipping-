@@ -88,6 +88,8 @@ ASSUMED_DRIVELINE_EFFICIENCY = 0.95
 # the telemetry has no energy channels, so nothing distinguishes energy sent to the
 # battery from energy lost to the friction brakes.
 ASSUMED_REGEN_EFFICIENCY = 0.90
+# Store-to-motor efficiency on deployment. The 350 kW cap is at the MGU-K output.
+ASSUMED_DISCHARGE_EFFICIENCY = 0.95
 
 
 @dataclass
@@ -112,6 +114,7 @@ class FitReport:
     mu_brake: float
     brake_n: int
     regen_efficiency: float
+    discharge_efficiency: float
     p_ice_w: float
     driveline_efficiency: float
     power_n: int
@@ -499,6 +502,7 @@ def main() -> int:
         mu_brake=brake["mu_brake"],
         brake_n=brake["brake_n"],
         regen_efficiency=ASSUMED_REGEN_EFFICIENCY,
+        discharge_efficiency=ASSUMED_DISCHARGE_EFFICIENCY,
         p_ice_w=power["p_ice_w"],
         driveline_efficiency=power["driveline_efficiency"],
         power_n=power["power_n"],
@@ -531,6 +535,12 @@ def main() -> int:
             f"Regen efficiency ({ASSUMED_REGEN_EFFICIENCY}) is assumed. Public telemetry "
             "has no energy channels, so nothing separates energy recovered to the "
             "battery from energy lost to the friction brakes.",
+            f"Store-to-motor efficiency ({ASSUMED_DISCHARGE_EFFICIENCY}) is assumed: the "
+            "350 kW cap is at the MGU-K output, so the store gives up slightly more.",
+            "Under this engine every 2026 reference lap ends with 2-3.5 MJ unused, which "
+            "no qualifying lap does. The power peaks say the engine cannot be weaker "
+            "than ~400 kW; the lap energy budgets say its average is lower. A torque "
+            "curve would reconcile them and the public data does not carry one.",
         ],
     )
 

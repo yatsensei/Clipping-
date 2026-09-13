@@ -59,7 +59,13 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
         setStrategy(s);
         setComparison(c);
       })
-      .catch((e) => alive && setError(e.message))
+      .catch((e) => {
+        if (!alive) return;
+        // The driver's lap exists only for circuits with a 2026 session; moving to
+        // one without it falls back to the optimiser rather than showing an error.
+        if (mode === "measured") setMode("optimal");
+        else setError(e.message);
+      })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -71,6 +77,8 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
   const capacity = comparison ? Math.max(4, comparison.harvest_cap_mj / 2) : 4;
 
   const circuit = circuits.find((c) => c.circuit_id === circuitId);
+  // "Driver" is offered only where the circuit has a reconstructed lap.
+  const modes: StrategyMode[] = comparison?.measured ? [...MODES, "measured"] : MODES;
 
   return (
     <div>
@@ -95,7 +103,7 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
               role="group"
               aria-label="Deployment strategy"
             >
-              {MODES.map((m) => (
+              {modes.map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
@@ -106,11 +114,15 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
                   title={MODE_DESCRIPTION[m]}
                   className={`focus-ring px-3 py-1.5 text-xs uppercase tracking-[0.14em] transition-colors ${
                     mode === m
-                      ? "bg-deploy text-surface"
+                      ? m === "measured"
+                        ? "bg-harvest text-surface"
+                        : "bg-deploy text-surface"
                       : "text-muted hover:text-ink"
                   }`}
                 >
-                  {MODE_LABEL[m]}
+                  {m === "measured" && comparison?.measured
+                    ? `Driver · ${comparison.measured.driver}`
+                    : MODE_LABEL[m]}
                 </button>
               ))}
             </div>
@@ -154,10 +166,19 @@ export function Analysis({ circuits }: { circuits: CircuitListItem[] }) {
 
               <Legend />
 
-              {!strategy.repeatable && strategy.repeatability_note && (
-                <p className="rounded border border-clip bg-panel p-3 text-[11px] text-clip">
-                  {strategy.repeatability_note}
+              {strategy.data_type === "inferred_from_telemetry" ? (
+                <p className="rounded border border-harvest/40 bg-panel p-3 text-[11px] leading-relaxed text-muted">
+                  <span className="text-harvest">Inferred, not measured. </span>
+                  {strategy.inference_note}
+                  {strategy.repeatability_note && <> {strategy.repeatability_note}</>}
                 </p>
+              ) : (
+                !strategy.repeatable &&
+                strategy.repeatability_note && (
+                  <p className="rounded border border-clip bg-panel p-3 text-[11px] text-clip">
+                    {strategy.repeatability_note}
+                  </p>
+                )
               )}
 
               <div className="rounded-lg border border-line bg-panel p-3">

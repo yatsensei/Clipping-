@@ -34,11 +34,11 @@ import numpy as np
 import pandas as pd
 
 from config.regulations import ES_USABLE_WINDOW_J, OPERATIVE_HARVEST_CAP_J
-from config.vehicle import air_density
 from data.cache import PROCESSED_DIR
 from data.dynamics import load_reference_traces
 from energy.battery import BatteryState
 from physics.inverse import ice_power_floor, infer_deployment
+from physics.setup import circuit_density
 from physics.simulate import simulate_lap
 from physics.vehicle import VehicleModel
 
@@ -47,18 +47,6 @@ MEASURED_DIR = PROCESSED_DIR / "measured"
 VOID, PANEL, DEPLOY, HARVEST, BONE, MUTED = (
     "#0A0A0B", "#141619", "#FF2E17", "#3FE0D0", "#F2F0EB", "#5A6068",
 )
-
-
-def circuit_density(circuit_id: str, default: float) -> float:
-    path = PROCESSED_DIR / "weather_2026.parquet"
-    if not path.exists():
-        return default
-    w = pd.read_parquet(path)
-    row = w[w["circuit"] == circuit_id]
-    if row.empty or pd.isna(row.iloc[0].get("pressure_mbar")):
-        return default
-    r = row.iloc[0]
-    return air_density(r["pressure_mbar"], r["air_temp_c"], r["humidity_pct"] or 0.0)
 
 
 def _errors(sim: np.ndarray, actual: np.ndarray, prefix: str) -> dict:
@@ -130,7 +118,7 @@ def fit_grip_scale(fit: dict, rho: float, trace: pd.DataFrame) -> float:
 
 
 def run_one(circuit_id: str, trace: pd.DataFrame, fit: dict) -> dict:
-    rho = circuit_density(circuit_id, float(fit["air_density"]))
+    rho, _ = circuit_density(circuit_id, float(fit["air_density"]))
 
     curvature = trace["curvature"].to_numpy()
     gradient = trace["gradient"].to_numpy()
